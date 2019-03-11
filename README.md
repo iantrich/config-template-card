@@ -1,1 +1,1 @@
-<h1 align="center"> Config Tempalte Card for Home Assistant</h1>
+<h1 align="center"> Config Template Card for Home Assistant</h1>
