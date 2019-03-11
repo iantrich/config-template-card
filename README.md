@@ -1,0 +1,1 @@
+<h1 align="center"> Config Tempalte Card for Home Assistant</h1>

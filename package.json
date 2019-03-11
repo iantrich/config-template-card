@@ -1,0 +1,42 @@
+{
+    "name": "config-teamplate-card",
+    "version": "1.0.0",
+    "description": "Lovelace config-teamplate-card",
+    "keywords": [
+        "home-assistant",
+        "homeassistant",
+        "hass",
+        "automation",
+        "lovelace",
+        "custom-cards"
+    ],
+    "module": "config-teamplate-card.js",
+    "repository": "git@github.com:custom_cards/config-teamplate-card.git",
+    "author": "Ian Richardson <iantrich@gmail.com>",
+    "license": "MIT",
+    "dependencies": {
+        "lit-element": "^2.0.1",
+        "superstruct": "^0.6.0",
+        "home-assistant-js-websocket": "^3.3.0",
+        "deep-clone-simple": "^1.1.1"
+    },
+    "devDependencies": {
+        "@typescript-eslint/parser": "^1.4.1",
+        "eslint": "^5.14.1",
+        "eslint-config-airbnb-base": "^13.1.0",
+        "eslint-plugin-import": "^2.16.0",
+        "@typescript-eslint/eslint-plugin": "^1.4.2",
+        "prettier": "^1.16.4",
+        "rollup": "^1.2.3",
+        "rollup-plugin-ignore": "^1.0.5",
+        "rollup-plugin-node-resolve": "^4.0.1",
+        "rollup-plugin-typescript2": "^0.19.2",
+        "typescript": "^3.3.3333"
+    },
+    "scripts": {
+        "start": "rollup -c --watch",
+        "build": "npm run lint && npm run rollup",
+        "lint": "eslint src/*.ts",
+        "rollup": "rollup -c"
+    }
+}
