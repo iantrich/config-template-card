@@ -8,7 +8,7 @@ import {
   css
 } from "lit-element";
 
-import { ConfigTemplateConfig, HomeAssistant } from './types';
+import { ConfigTemplateConfig, HomeAssistant } from "./types";
 import { fireEvent } from "./fire-event";
 
 @customElement("config-template-card")
@@ -18,8 +18,8 @@ class ConfigTemplateCard extends LitElement {
   @property() private _config?: ConfigTemplateConfig;
 
   public setConfig(config: ConfigTemplateConfig): void {
-    if (!this._config || !this._config.config || !this._config.config.type) {
-      throw new Error('Invalid configuration');
+    if (!config || !config.config || !config.config.type) {
+      throw new Error("Invalid configuration");
     }
 
     this._config = config;
@@ -33,28 +33,30 @@ class ConfigTemplateCard extends LitElement {
     // this.hass.states
     // this.hass.user.name
 
-    let config = this._config.config;
-    config = this._evaluateConfig(config);
+    let cardConfig = this._config.config;
+    cardConfig = this._evaluateConfig(cardConfig);
 
     console.log(this._config.config);
-    console.log(config);
+    console.log(cardConfig);
 
-    const element = this.createThing(config);
+    const element = this.createThing(cardConfig);
     element.hass = this.hass;
 
-    return html`${element}`;
+    return html`
+      ${element}
+    `;
   }
 
   private _evaluateConfig(config: any): any {
     Object.entries(config).forEach(entry => {
-      let key = entry[0];
-      let value = entry[1];
+      const key = entry[0];
+      const value = entry[1];
 
-      if (value !== null && typeof value == "object") {
+      if (value !== null && typeof value === "object") {
         config[key] = this._evaluateConfig(entry);
       }
 
-      if (value !== null && typeof value == "string" && value.includes("${")) {
+      if (value !== null && typeof value === "string" && value.includes("${")) {
         config[key] = this._evaluateTemplate(value);
       }
     });
@@ -66,9 +68,17 @@ class ConfigTemplateCard extends LitElement {
     return eval(template.substring(2, template.length - 1));
   }
 
-  private createThing(config) {
+  private createThing(cardConfig) {
+    const _createError = (error, config) => {
+      return _createThing("hui-error-card", {
+        type: "error",
+        error,
+        config
+      });
+    };
+
     const _createThing = (tag, config) => {
-      const element = document.createElement(tag);
+      const element = window.document.createElement(tag);
       try {
         element.setConfig(config);
       } catch (err) {
@@ -78,33 +88,29 @@ class ConfigTemplateCard extends LitElement {
       return element;
     };
 
-    const _createError = (error, config) => {
-      return _createThing("hui-error-card", {
-        type: "error",
-        error,
-        config,
-      });
-    };
+    if (
+      !cardConfig ||
+      typeof cardConfig !== "object" ||
+      !cardConfig.type ||
+      !cardConfig.type.startsWith("custom:")
+    )
+      return _createError("No type configured", cardConfig);
 
-    if (!config || typeof config !== "object" || !config.type || !config.type.startsWith("custom:"))
-      return _createError(`No type configured`, config);
+    const tag = cardConfig.type.substr("custom:".length);
 
-    const tag = config.type.substr("custom:".length);
-
-    if (customElements.get(tag))
-      return _createThing(tag, config);
+    if (customElements.get(tag)) return _createThing(tag, cardConfig);
 
     // If element doesn't exist (yet) create an error
     const element = _createError(
-      `Custom element doesn't exist: ${config.type}.`,
-      config
+      `Custom element doesn't exist: ${cardConfig.type}.`,
+      cardConfig
     );
     element.style.display = "None";
     const timer = setTimeout(() => {
       element.style.display = "";
     }, 2000);
     // Remove error if element is defined later
-    customElements.whenDefined(config.type).then(() => {
+    customElements.whenDefined(cardConfig.type).then(() => {
       clearTimeout(timer);
       fireEvent(this, "ll-rebuild", {}, element);
     });
