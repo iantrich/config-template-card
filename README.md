@@ -51,6 +51,8 @@ resources:
 
 Add a custom element in your `ui-lovelace.yaml` or in the UI Editor as a Manual Card
 
+### Warning: [Lists not supported yet](https://github.com/custom-cards/config-template-card/issues/2)
+
 ```yaml
       - type: custom:config-template-card
         card:
