@@ -67,10 +67,10 @@ Add a custom element in your `ui-lovelace.yaml` or in the UI Editor as a Manual 
         show_header_toggle: false
         entities:
           - type: custom:config-template-card
-          entity: binary_sensor.attic_garage_low_battery
-          config:
-            type: custom:hui-entity-button-card
-            name: "${'Test 1: ' + this.hass.states[thisEntity].attributes.friendly_name}"
+            entity: binary_sensor.attic_garage_low_battery
+            config:
+              type: custom:hui-entity-button-card
+              name: "${'Test 1: ' + this.hass.states[thisEntity].attributes.friendly_name}"
 
       # A card itself
       - type: custom:config-template-card
