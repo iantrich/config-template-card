@@ -33,7 +33,8 @@ class ConfigTemplateCard extends LitElement {
     // this.hass.user.name
 
     let cardConfig = deepClone(this._config.config);
-    cardConfig = this._evaluateConfig(cardConfig);
+    let parentEntity = this._config['entity'];
+    cardConfig = this._evaluateConfig(cardConfig, parentEntity);
     const element = this.createThing(cardConfig);
     element.hass = this.hass;
 
@@ -42,25 +43,29 @@ class ConfigTemplateCard extends LitElement {
     `;
   }
 
-  private _evaluateConfig(config: any): any {
+  private _evaluateConfig(config: any, parentEntity: string): any {
+    let childEntity = config['entity'];
+    config['entity'] = parentEntity;
     Object.entries(config).forEach(entry => {
       const key = entry[0];
       const value = entry[1];
 
       if (value !== null && typeof value === "object") {
-        config[key] = this._evaluateConfig(entry);
+        config[key] = this._evaluateConfig(entry, childEntity);
       }
 
       if (value !== null && typeof value === "string" && value.includes("${")) {
-        config[key] = this._evaluateTemplate(value);
+        config[key] = this._evaluateTemplate(value, parentEntity);
       }
     });
 
     return config;
   }
 
-  private _evaluateTemplate(template: string): string {
-    return eval(template.substring(2, template.length - 1));
+  private _evaluateTemplate(template: string, entity: string): string {
+    const fbody = `return (${template.substring(2, template.length - 1)})`;
+    const func = new Function('thisEntity', fbody);
+    return func.call(this, entity);
   }
 
   private createThing(cardConfig) {

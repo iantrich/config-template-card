@@ -2298,28 +2298,33 @@ let ConfigTemplateCard = class ConfigTemplateCard extends LitElement {
         // this.hass.states
         // this.hass.user.name
         let cardConfig = deepcopy(this._config.config);
-        cardConfig = this._evaluateConfig(cardConfig);
+        let parentEntity = this._config['entity'];
+        cardConfig = this._evaluateConfig(cardConfig, parentEntity);
         const element = this.createThing(cardConfig);
         element.hass = this.hass;
         return html `
       ${element}
     `;
     }
-    _evaluateConfig(config) {
+    _evaluateConfig(config, parentEntity) {
+        let childEntity = config['entity'];
+        config['entity'] = parentEntity;
         Object.entries(config).forEach(entry => {
             const key = entry[0];
             const value = entry[1];
             if (value !== null && typeof value === "object") {
-                config[key] = this._evaluateConfig(entry);
+                config[key] = this._evaluateConfig(entry, childEntity);
             }
             if (value !== null && typeof value === "string" && value.includes("${")) {
-                config[key] = this._evaluateTemplate(value);
+                config[key] = this._evaluateTemplate(value, parentEntity);
             }
         });
         return config;
     }
-    _evaluateTemplate(template) {
-        return eval(template.substring(2, template.length - 1));
+    _evaluateTemplate(template, entity) {
+        const fbody = `return (${template.substring(2, template.length - 1)})`;
+        const func = new Function('thisEntity', fbody);
+        return func.call(this, entity);
     }
     createThing(cardConfig) {
         const _createError = (error, config) => {

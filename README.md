@@ -55,14 +55,51 @@ Add a custom element in your `ui-lovelace.yaml` or in the UI Editor as a Manual 
 
 ```yaml
       - type: custom:config-template-card
-        card:
+        entity: 'media_player.office'
+        config:
           type: custom:hui-entity-button-card
           name: "${this.hass.states['media_player.office'].state === 'playing' ? 'Rocking' : 'Not Rocking'}"
-          entity: 
           icon: "${this.hass.states['media_player.office'].state === 'playing' ? 'mdi:music' : 'mdi:sleep'}"
+
+      # Inside an HA entities card
+      - type: entities
+        title: Test
+        show_header_toggle: false
+        entities:
+          - type: custom:config-template-card
+          entity: binary_sensor.attic_garage_low_battery
+          config:
+            type: custom:hui-entity-button-card
+            name: "${'Test 1: ' + this.hass.states[thisEntity].attributes.friendly_name}"
+
+	  # A card itself
+	  - type: custom:config-template-card
+        entity: light.garage_attic_light
+        config:
+          type: custom:hui-entity-button-card
+          name: "${'Test 2: ' + this.hass.states[thisEntity].attributes.friendly_name}"
+
+	  # Inside a monster-card
+	  - type: custom:monster-card
+        card:
+          type: entities
+          title: Low Batteries
+          show_header_toggle: false
+        filter:
+          include:
+            - domain: binary_sensor
+              options:
+                type: custom:config-template-card
+                config:
+                  type: custom:hui-entity-button-card
+                  name: "${'Test 3: ' + this.hass.states[thisEntity].attributes.friendly_name}"
+              attributes:
+                battery_level: '<= 50'
 ```
 
 ### Note: All templates must be enclosed by `${}` and card type must custom even for core. e.g. custom:hui-shopping-list-card
+
+You may use ```thisEntity``` to get the name of the entity without having to hard code it inside the script itself.
 
 More examples to come, but you can pretty much go crazy using the [this.hass](https://developers.home-assistant.io/docs/en/frontend_data.html) object
 
