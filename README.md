@@ -34,7 +34,7 @@ Save [config-template-card](https://github.com/custom-cards/config-template-card
 
 ```bash
 wget https://raw.githubusercontent.com/custom-cards/config-template-card/master/dist/config-template-card.js
-mv pc-card.js /config/www/
+mv config-template-card.js /config/www/
 ```
 
 ### Step 2
