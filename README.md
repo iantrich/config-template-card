@@ -72,15 +72,15 @@ Add a custom element in your `ui-lovelace.yaml` or in the UI Editor as a Manual 
             type: custom:hui-entity-button-card
             name: "${'Test 1: ' + this.hass.states[thisEntity].attributes.friendly_name}"
 
-    # A card itself
-    - type: custom:config-template-card
+      # A card itself
+      - type: custom:config-template-card
         entity: light.garage_attic_light
         config:
           type: custom:hui-entity-button-card
           name: "${'Test 2: ' + this.hass.states[thisEntity].attributes.friendly_name}"
 
-    # Inside a monster-card
-    - type: custom:monster-card
+      # Inside a monster-card
+      - type: custom:monster-card
         card:
           type: entities
           title: Low Batteries
