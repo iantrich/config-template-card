@@ -3,9 +3,7 @@ import {
   html,
   customElement,
   property,
-  CSSResult,
-  TemplateResult,
-  css
+  TemplateResult
 } from "lit-element";
 import deepClone from "deep-clone-simple";
 
@@ -36,10 +34,6 @@ class ConfigTemplateCard extends LitElement {
 
     let cardConfig = deepClone(this._config.config);
     cardConfig = this._evaluateConfig(cardConfig);
-
-    console.log(this._config.config);
-    console.log(cardConfig);
-
     const element = this.createThing(cardConfig);
     element.hass = this.hass;
 
