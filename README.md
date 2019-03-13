@@ -60,7 +60,7 @@ Add a custom element in your `ui-lovelace.yaml` or in the UI Editor as a Manual 
           icon: "${this.hass.states['media_player.office'].state === 'playing' ? 'mdi:music' : 'mdi:sleep'}"
 ```
 
-### Note: All templates must be enclosed by `${}` and card type must custom even for core. e.g. custom:hui-shopping-list-card
+### Note: All templates must be enclosed by `${}` and card type must custom even for core. e.g. custom:hui-shopping-list-card, but thats a bug thst ill fix
 
 More examples to come, but you can pretty much go crazy using the [this.hass](https://developers.home-assistant.io/docs/en/frontend_data.html) object
 
