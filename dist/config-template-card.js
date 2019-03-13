@@ -2255,6 +2255,22 @@ LitElement.finalized = true;
  */
 LitElement.render = render$1;
 
+function deepcopy(value) {
+  if (!(!!value && typeof value == 'object')) {
+    return value;
+  }
+  if (Object.prototype.toString.call(value) == '[object Date]') {
+    return new Date(value.getTime());
+  }
+  if (Array.isArray(value)) {
+    return value.map(deepcopy);
+  }
+  var result = {};
+  Object.keys(value).forEach(
+    function(key) { result[key] = deepcopy(value[key]); });
+  return result;
+}
+
 const fireEvent = (node, type, detail, options) => {
     options = options || {};
     detail = detail === null || detail === undefined ? {} : detail;
@@ -2281,7 +2297,7 @@ let ConfigTemplateCard = class ConfigTemplateCard extends LitElement {
         }
         // this.hass.states
         // this.hass.user.name
-        let cardConfig = this._config.config;
+        let cardConfig = deepcopy(this._config.config);
         cardConfig = this._evaluateConfig(cardConfig);
         console.log(this._config.config);
         console.log(cardConfig);

@@ -7,6 +7,7 @@ import {
   TemplateResult,
   css
 } from "lit-element";
+import deepClone from "deep-clone-simple";
 
 import { ConfigTemplateConfig, HomeAssistant } from "./types";
 import { fireEvent } from "./fire-event";
@@ -33,7 +34,7 @@ class ConfigTemplateCard extends LitElement {
     // this.hass.states
     // this.hass.user.name
 
-    let cardConfig = this._config.config;
+    let cardConfig = deepClone(this._config.config);
     cardConfig = this._evaluateConfig(cardConfig);
 
     console.log(this._config.config);
