@@ -54,7 +54,7 @@ Add a custom element in your `ui-lovelace.yaml` or in the UI Editor as a Manual 
 ```yaml
       - type: custom:config-template-card
         card:
-          type: entity-button
+          type: custom:hui-entity-button-card
           name: "${this.hass.states['media_player.office'].state === 'playing' ? 'Rocking' : 'Not Rocking'}"
           entity: 
           icon: "${this.hass.states['media_player.office'].state === 'playing' ? 'mdi:music' : 'mdi:sleep'}"
