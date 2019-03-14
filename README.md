@@ -51,16 +51,18 @@ resources:
 
 Add a custom element in your `ui-lovelace.yaml` or in the UI Editor as a Manual Card
 
+### Warning: [Lists not supported yet](https://github.com/custom-cards/config-template-card/issues/2)
+
 ```yaml
       - type: custom:config-template-card
         card:
-          type: entity-button
+          type: custom:hui-entity-button-card
           name: "${this.hass.states['media_player.office'].state === 'playing' ? 'Rocking' : 'Not Rocking'}"
           entity: 
           icon: "${this.hass.states['media_player.office'].state === 'playing' ? 'mdi:music' : 'mdi:sleep'}"
 ```
 
-### Note: All templates must be enclosed by `${}` and card type must custom even for core. e.g. custom:hui-shopping-list-card, but thats a bug thst ill fix
+### Note: All templates must be enclosed by `${}` and card type must custom even for core. e.g. custom:hui-shopping-list-card
 
 More examples to come, but you can pretty much go crazy using the [this.hass](https://developers.home-assistant.io/docs/en/frontend_data.html) object
 
