@@ -79,7 +79,7 @@ config:
     - entity: >-
         ${ states['light.bed_light'].state === 'on' ? 'light.bed_light' :
         'climate.ecobee' }
-      icon: '${states[''cover.garage_door''].state === ''open'' ? ''mdi:hotel'' : '''' }'
+      icon: "${states['sensor.dow_futures_change_pct'].state > 0 ? 'mdi:arrow-up-bold-circle' : 'mdi:arrow-down-bold-circle' }"
 
 ```
 
