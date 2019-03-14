@@ -61,25 +61,16 @@ Add a custom element in your `ui-lovelace.yaml` or in the UI Editor as a Manual 
 ```yaml
 type: 'custom:config-template-card'
 config:
-  type: >-
-    ${states['light.bed_light'].state === 'on' ? 'custom:hui-glance-card' :
-    'custom:hui-entities-card' }
+  type: "${states['light.bed_light'].state === 'on' ? 'custom:hui-glance-card' : 'custom:hui-entities-card'}"
   entities:
     - entity: alarm_control_panel.ha_alarm
-      name: >-
-        ${states['cover.garage_door'].state === 'open' &&
-        states['alarm_control_panel.ha_alarm'].state === 'armed_home' ? 'Close
-        the garage!' : '' }
+      name: "${states['cover.garage_door'].state === 'open' && states['alarm_control_panel.ha_alarm'].state === 'armed_home' ? 'Close the garage!' : ''}"
     - entity: binary_sensor.basement_floor_wet
     - entity: climate.ecobee
-      name: >-
-        ${states['climate.ecobee'].attributes.current_temperature > 22 ? 'Cozy'
-        : 'Too Hot/Cold'}
+      name: "${states['climate.ecobee'].attributes.current_temperature > 22 ? 'Cozy' : 'Too Hot/Cold'}"
     - entity: cover.garage_door
-    - entity: >-
-        ${ states['light.bed_light'].state === 'on' ? 'light.bed_light' :
-        'climate.ecobee' }
-      icon: '${states[''cover.garage_door''].state === ''open'' ? ''mdi:hotel'' : '''' }'
+    - entity: "${states['light.bed_light'].state === 'on' ? 'light.bed_light' : 'climate.ecobee'}"
+      icon: "${states['cover.garage_door'].state === 'open' ? 'mdi:hotel' : '' }"
 
 ```
 
