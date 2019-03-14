@@ -51,20 +51,39 @@ resources:
 
 Add a custom element in your `ui-lovelace.yaml` or in the UI Editor as a Manual Card
 
-### Warning: [Lists not supported yet](https://github.com/custom-cards/config-template-card/issues/2)
+### Available variables for tempalting
+`this.hass` - The [hass](https://developers.home-assistant.io/docs/en/frontend_data.html) object
+
+`states` - The [states](https://developers.home-assistant.io/docs/en/frontend_data.html#hassstates) object
+
+`user` - The [user](https://developers.home-assistant.io/docs/en/frontend_data.html#hassuser) object
 
 ```yaml
-      - type: custom:config-template-card
-        card:
-          type: custom:hui-entity-button-card
-          name: "${this.hass.states['media_player.office'].state === 'playing' ? 'Rocking' : 'Not Rocking'}"
-          entity: 
-          icon: "${this.hass.states['media_player.office'].state === 'playing' ? 'mdi:music' : 'mdi:sleep'}"
+type: 'custom:config-template-card'
+config:
+  type: >-
+    ${states['light.bed_light'].state === 'on' ? 'custom:hui-glance-card' :
+    'custom:hui-entities-card' }
+  entities:
+    - entity: alarm_control_panel.ha_alarm
+      name: >-
+        ${states['cover.garage_door'].state === 'open' &&
+        states['alarm_control_panel.ha_alarm'].state === 'armed_home' ? 'Close
+        the garage!' : '' }
+    - entity: binary_sensor.basement_floor_wet
+    - entity: climate.ecobee
+      name: >-
+        ${states['climate.ecobee'].attributes.current_temperature > 22 ? 'Cozy'
+        : 'Too Hot/Cold'}
+    - entity: cover.garage_door
+    - entity: >-
+        ${ states['light.bed_light'].state === 'on' ? 'light.bed_light' :
+        'climate.ecobee' }
+      icon: '${states[''cover.garage_door''].state === ''open'' ? ''mdi:hotel'' : '''' }'
+
 ```
 
 ### Note: All templates must be enclosed by `${}` and card type must custom even for core. e.g. custom:hui-shopping-list-card
-
-More examples to come, but you can pretty much go crazy using the [this.hass](https://developers.home-assistant.io/docs/en/frontend_data.html) object
 
 [Troubleshooting](https://github.com/thomasloven/hass-config/wiki/Lovelace-Plugins)
 
