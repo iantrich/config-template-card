@@ -34,6 +34,10 @@ class ConfigTemplateCard extends LitElement {
 
     let cardConfig = deepClone(this._config.config);
     cardConfig = this._evaluateConfig(cardConfig);
+
+    // console.log(this._config.config);
+    // console.log(cardConfig);
+
     const element = this.createThing(cardConfig);
     element.hass = this.hass;
 
@@ -47,19 +51,38 @@ class ConfigTemplateCard extends LitElement {
       const key = entry[0];
       const value = entry[1];
 
-      if (value !== null && typeof value === "object") {
-        config[key] = this._evaluateConfig(entry);
-      }
-
-      if (value !== null && typeof value === "string" && value.includes("${")) {
-        config[key] = this._evaluateTemplate(value);
+      if (value !== null) {
+        if (value instanceof Array) {
+          config[key] = this._evaluateArray(value);
+        } else if (typeof value === "object") {
+          config[key] = this._evaluateConfig(value);
+        } else if (typeof value === "string" && value.includes("${")) {
+          config[key] = this._evaluateTemplate(value);
+        }
       }
     });
 
     return config;
   }
 
+  private _evaluateArray(array: any): any {
+    for (let i = 0; i < array.length; ++i) {
+      let value = array[i];
+      if (value instanceof Array) {
+        array[i] = this._evaluateArray(value);
+      } else if (typeof value === "object") {
+        array[i] = this._evaluateConfig(value);
+      } else if (typeof value === "string" && value.includes("${")) {
+        array[i] = this._evaluateTemplate(value);
+      }
+    }
+
+    return array;
+  }
+
   private _evaluateTemplate(template: string): string {
+    const user = this.hass!.user;
+    const states = this.hass!.states;
     return eval(template.substring(2, template.length - 1));
   }
 
