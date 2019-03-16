@@ -2,18 +2,15 @@
 📝 Templatable Configuration Card
 
 [![GitHub Release][releases-shield]][releases]
+[![GitHub Activity][commits-shield]][commits]
+[![custom_updater][customupdaterbadge]][customupdater]
 [![License][license-shield]](LICENSE.md)
 
 ![Project Maintenance][maintenance-shield]
-[![GitHub Activity][commits-shield]][commits]
+[![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
 
 [![Discord][discord-shield]][discord]
 [![Community Forum][forum-shield]][forum]
-
-## Support
-Hey dude! Help me out for a couple of :beers: or a :coffee:!
-
-[![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/zJtVxUAgH)
 
 This card is for [Lovelace](https://www.home-assistant.io/lovelace) on [Home Assistant](https://www.home-assistant.io/) that allows you to use pretty much any valid Javascript on the hass object in your configuration
 
@@ -78,8 +75,12 @@ config:
 
 [Troubleshooting](https://github.com/thomasloven/hass-config/wiki/Lovelace-Plugins)
 
+[buymecoffee]: https://www.buymeacoffee.com/iantrich
+[buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
 [commits-shield]: https://img.shields.io/github/commit-activity/y/custom-cards/config-template-card.svg?style=for-the-badge
 [commits]: https://github.com/custom-cards/config-template-card/commits/master
+[customupdater]: https://github.com/custom-components/custom_updater
+[customupdaterbadge]: https://img.shields.io/badge/custom__updater-true-success.svg?style=for-the-badge
 [discord]: https://discord.gg/Qa5fW2R
 [discord-shield]: https://img.shields.io/discord/478094546522079232.svg?style=for-the-badge
 [forum-shield]: https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge
