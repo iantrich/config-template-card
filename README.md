@@ -81,6 +81,11 @@ config:
 
 [Troubleshooting](https://github.com/thomasloven/hass-config/wiki/Lovelace-Plugins)
 
+## Developers
+Fork and then clone the repo to your local machine. From the cloned directory run
+
+`npm install && npm run build`
+
 [buymecoffee]: https://www.buymeacoffee.com/iantrich
 [buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
 [commits-shield]: https://img.shields.io/github/commit-activity/y/custom-cards/config-template-card.svg?style=for-the-badge
