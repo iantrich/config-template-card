@@ -20,6 +20,7 @@ This card is for [Lovelace](https://www.home-assistant.io/lovelace) on [Home Ass
 | ---- | ---- | ------- | -----------
 | type | string | **Required** | `custom:config-template-card`
 | config | object | **Required** | Card object
+| entities | list | **Optional** | List of entity strings that should be watched for updates
 
 ## Installation
 
@@ -57,6 +58,11 @@ Add a custom element in your `ui-lovelace.yaml` or in the UI Editor as a Manual 
 
 ```yaml
 type: 'custom:config-template-card'
+entities:
+  - light.bed_light
+  - cover.garage_door
+  - alarm_control_panel.ha_alarm
+  - climate.ecobee
 config:
   type: "${states['light.bed_light'].state === 'on' ? 'custom:hui-glance-card' : 'custom:hui-entities-card'}"
   entities:

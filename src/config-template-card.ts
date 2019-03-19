@@ -3,7 +3,8 @@ import {
   html,
   customElement,
   property,
-  TemplateResult
+  TemplateResult,
+  PropertyValues
 } from "lit-element";
 import deepClone from "deep-clone-simple";
 
@@ -22,6 +23,25 @@ class ConfigTemplateCard extends LitElement {
     }
 
     this._config = config;
+  }
+
+  protected shouldUpdate(changedProps: PropertyValues): boolean {
+    if (changedProps.has("_config") || !this._config!.entities) {
+      return true;
+    }
+
+    const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
+
+    if (oldHass) {
+      let changed = false;
+      this._config!.entities.forEach(entity => {
+        changed = changed || oldHass.states[entity] !== this.hass!.states[entity]
+      });
+      
+      return changed;
+    }
+
+    return true;
   }
 
   protected render(): TemplateResult | void {

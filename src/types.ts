@@ -9,6 +9,7 @@ import {
 
 export interface ConfigTemplateConfig {
   type: string;
+  entities?: string[];
   config?: any;
 }
 

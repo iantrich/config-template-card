@@ -2291,6 +2291,20 @@ let ConfigTemplateCard = class ConfigTemplateCard extends LitElement {
         }
         this._config = config;
     }
+    shouldUpdate(changedProps) {
+        if (changedProps.has("_config") || !this._config.entities) {
+            return true;
+        }
+        const oldHass = changedProps.get("hass");
+        if (oldHass) {
+            let changed = false;
+            this._config.entities.forEach(entity => {
+                changed = changed || oldHass.states[entity] !== this.hass.states[entity];
+            });
+            return changed;
+        }
+        return true;
+    }
     render() {
         if (!this._config || !this.hass) {
             return html ``;
