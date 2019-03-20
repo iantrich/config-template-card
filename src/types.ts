@@ -10,6 +10,7 @@ import {
 export interface ConfigTemplateConfig {
   type: string;
   entities?: string[];
+  variables?: string[];
   config?: any;
 }
 

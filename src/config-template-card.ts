@@ -103,6 +103,13 @@ class ConfigTemplateCard extends LitElement {
   private _evaluateTemplate(template: string): string {
     const user = this.hass!.user;
     const states = this.hass!.states;
+    const vars: any[] = []
+    
+    for (const v in this._config!.variables) {
+      const newV = eval(this._config!.variables[v]);
+      vars.push(newV);
+    }
+    
     return eval(template.substring(2, template.length - 1));
   }
 

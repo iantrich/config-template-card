@@ -21,6 +21,7 @@ This card is for [Lovelace](https://www.home-assistant.io/lovelace) on [Home Ass
 | type | string | **Required** | `custom:config-template-card`
 | config | object | **Required** | Card object
 | entities | list | **Optional** | List of entity strings that should be watched for updates
+| variables | list | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars`
 
 ## Installation
 
@@ -56,25 +57,29 @@ Add a custom element in your `ui-lovelace.yaml` or in the UI Editor as a Manual 
 
 `user` - The [user](https://developers.home-assistant.io/docs/en/frontend_data.html#hassuser) object
 
+`vars` - Defined by `variables` configuration and accessible in your templates starting at the 0th index as your firstly defined variable to help clean up your templates
+
 ```yaml
 type: 'custom:config-template-card'
+variables:
+  - states['light.bed_light'].state
+  - states['cover.garage_door'].state
 entities:
   - light.bed_light
   - cover.garage_door
   - alarm_control_panel.ha_alarm
   - climate.ecobee
 config:
-  type: "${states['light.bed_light'].state === 'on' ? 'custom:hui-glance-card' : 'custom:hui-entities-card'}"
+  type: "${vars[0] === 'on' ? 'custom:hui-glance-card' : 'custom:hui-entities-card'}"
   entities:
     - entity: alarm_control_panel.ha_alarm
-      name: "${states['cover.garage_door'].state === 'open' && states['alarm_control_panel.ha_alarm'].state === 'armed_home' ? 'Close the garage!' : ''}"
+      name: "${vars[1] === 'open' && states['alarm_control_panel.ha_alarm'].state === 'armed_home' ? 'Close the garage!' : ''}"
     - entity: binary_sensor.basement_floor_wet
     - entity: climate.ecobee
       name: "${states['climate.ecobee'].attributes.current_temperature > 22 ? 'Cozy' : 'Too Hot/Cold'}"
     - entity: cover.garage_door
-    - entity: "${states['light.bed_light'].state === 'on' ? 'light.bed_light' : 'climate.ecobee'}"
-      icon: "${states['cover.garage_door'].state === 'open' ? 'mdi:hotel' : '' }"
-
+    - entity: "${vars[0] === 'on' ? 'light.bed_light' : 'climate.ecobee'}"
+      icon: "${vars[1] === 'open' ? 'mdi:hotel' : '' }"
 ```
 
 ### Note: All templates must be enclosed by `${}` and card type must custom even for core. e.g. custom:hui-shopping-list-card
