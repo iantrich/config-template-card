@@ -19,7 +19,7 @@ This card is for [Lovelace](https://www.home-assistant.io/lovelace) on [Home Ass
 | Name | Type | Requirement | Description
 | ---- | ---- | ------- | -----------
 | type | string | **Required** | `custom:config-template-card`
-| config | object | **Required** | Card object
+| card | object | **Required** | Card object
 | entities | list | **Optional** | List of entity strings that should be watched for updates
 | variables | list | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars`
 
@@ -69,7 +69,7 @@ entities:
   - cover.garage_door
   - alarm_control_panel.ha_alarm
   - climate.ecobee
-config:
+card:
   type: "${vars[0] === 'on' ? 'custom:hui-glance-card' : 'custom:hui-entities-card'}"
   entities:
     - entity: alarm_control_panel.ha_alarm

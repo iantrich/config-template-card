@@ -18,7 +18,7 @@ class ConfigTemplateCard extends LitElement {
   @property() private _config?: ConfigTemplateConfig;
 
   public setConfig(config: ConfigTemplateConfig): void {
-    if (!config || !config.config || !config.config.type) {
+    if (!config || !config.card || !config.card.type) {
       throw new Error("Invalid configuration");
     }
 
@@ -52,7 +52,7 @@ class ConfigTemplateCard extends LitElement {
     // this.hass.states
     // this.hass.user.name
 
-    let cardConfig = deepClone(this._config.config);
+    let cardConfig = deepClone(this._config.card);
     cardConfig = this._evaluateConfig(cardConfig);
 
     // console.log(this._config.config);
