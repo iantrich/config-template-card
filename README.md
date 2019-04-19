@@ -12,6 +12,9 @@
 [![Discord][discord-shield]][discord]
 [![Community Forum][forum-shield]][forum]
 
+[![Twitter][twitter]][twitter]
+[![Github][github]][github]
+
 This card is for [Lovelace](https://www.home-assistant.io/lovelace) on [Home Assistant](https://www.home-assistant.io/) that allows you to use pretty much any valid Javascript on the hass object in your configuration
 
 ## Options
@@ -105,3 +108,5 @@ Fork and then clone the repo to your local machine. From the cloned directory ru
 [maintenance-shield]: https://img.shields.io/badge/maintainer-Ian%20Richardson%20%40iantrich-blue.svg?style=for-the-badge
 [releases-shield]: https://img.shields.io/github/release/custom-cards/config-template-card.svg?style=for-the-badge
 [releases]: https://github.com/custom-cards/config-template-card/releases
+[twitter]: https://img.shields.io/twitter/follow/iantrich.svg?style=social
+[github]: https://img.shields.io/github/followers/iantrich.svg?style=social
