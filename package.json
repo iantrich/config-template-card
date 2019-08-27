@@ -15,22 +15,22 @@
     "author": "Ian Richardson <iantrich@gmail.com>",
     "license": "MIT",
     "dependencies": {
-        "lit-element": "^2.0.1",
-        "superstruct": "^0.6.0",
-        "home-assistant-js-websocket": "^3.3.0",
-        "deep-clone-simple": "^1.1.1"
+        "deep-clone-simple": "^1.1.1",
+        "home-assistant-js-websocket": "^4.3.1",
+        "lit-element": "^2.2.1",
+        "superstruct": "^0.6.2"
     },
     "devDependencies": {
-        "@typescript-eslint/parser": "^1.4.1",
-        "eslint": "^5.14.1",
-        "eslint-config-airbnb-base": "^13.1.0",
-        "eslint-plugin-import": "^2.16.0",
-        "@typescript-eslint/eslint-plugin": "^1.4.2",
-        "prettier": "^1.16.4",
-        "rollup": "^1.2.3",
-        "rollup-plugin-node-resolve": "^4.0.1",
-        "rollup-plugin-typescript2": "^0.19.2",
-        "typescript": "^3.3.3333"
+        "@typescript-eslint/eslint-plugin": "^2.0.0",
+        "@typescript-eslint/parser": "^2.0.0",
+        "eslint": "^6.2.2",
+        "eslint-config-airbnb-base": "^14.0.0",
+        "eslint-plugin-import": "^2.18.2",
+        "prettier": "^1.18.2",
+        "rollup": "^1.20.2",
+        "rollup-plugin-node-resolve": "^5.2.0",
+        "rollup-plugin-typescript2": "^0.23.0",
+        "typescript": "^3.5.3"
     },
     "scripts": {
         "start": "rollup -c --watch",
