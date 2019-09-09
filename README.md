@@ -53,7 +53,7 @@ resources:
 
 Add a custom element in your `ui-lovelace.yaml` or in the UI Editor as a Manual Card
 
-### Available variables for tempalting
+### Available variables for templating
 `this.hass` - The [hass](https://developers.home-assistant.io/docs/en/frontend_data.html) object
 
 `states` - The [states](https://developers.home-assistant.io/docs/en/frontend_data.html#hassstates) object
