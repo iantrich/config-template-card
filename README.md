@@ -1,4 +1,4 @@
-# Config Template Card Card
+# Config Template Card Card by [@iantrich](https://www.github.com/iantrich)
 📝 Templatable Configuration Card
 
 [![GitHub Release][releases-shield]][releases]
