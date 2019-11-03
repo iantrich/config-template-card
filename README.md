@@ -1,13 +1,13 @@
-# Config Template Card Card by [@iantrich](https://www.github.com/iantrich)
+# Config Template Card Card
+
 📝 Templatable Configuration Card
 
 [![GitHub Release][releases-shield]][releases]
-[![GitHub Activity][commits-shield]][commits]
-[![custom_updater][customupdaterbadge]][customupdater]
 [![License][license-shield]](LICENSE.md)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge)](https://github.com/custom-components/hacs)
 
 ![Project Maintenance][maintenance-shield]
-[![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
+[![GitHub Activity][commits-shield]][commits]
 
 [![Discord][discord-shield]][discord]
 [![Community Forum][forum-shield]][forum]
@@ -17,53 +17,44 @@
 
 This card is for [Lovelace](https://www.home-assistant.io/lovelace) on [Home Assistant](https://www.home-assistant.io/) that allows you to use pretty much any valid Javascript on the hass object in your configuration
 
-## Options
+## Support
 
-| Name | Type | Requirement | Description
-| ---- | ---- | ------- | -----------
-| type | string | **Required** | `custom:config-template-card`
-| card | object | **Required** | Card object
-| entities | list | **Optional** | List of entity strings that should be watched for updates
-| variables | list | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars`
+Hey dude! Help me out for a couple of :beers: or a :coffee:!
+
+[![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/zJtVxUAgH)
+
+This card is for [Lovelace](https://www.home-assistant.io/lovelace) on [Home Assistant](https://www.home-assistant.io/) that display a [Roku](https://www.roku.com/) remote.
 
 ## Installation
 
-### Step 1
-
-Save [config-template-card](https://github.com/custom-cards/config-template-card/raw/master/dist/config-template-card.js) to `<config directory>/www/config-template-card.js` on your Home Assistant instanse.
-
-**Example:**
-
-```bash
-wget https://raw.githubusercontent.com/custom-cards/config-template-card/master/dist/config-template-card.js
-mv config-template-card.js /config/www/
-```
-
-### Step 2
-
-Link `config-template-card` inside your `ui-lovelace.yaml` or Raw Editor in the UI Editor
+Use [HACS](https://hacs.xyz) or follow this [guide](https://github.com/thomasloven/hass-config/wiki/Lovelace-Plugins)
 
 ```yaml
 resources:
-  - url: /local/config-template-card.js
-    type: module
+  url: /local/config-template-card.js
+  type: module
 ```
 
-### Step 3
+## Options
 
-Add a custom element in your `ui-lovelace.yaml` or in the UI Editor as a Manual Card
+| Name      | Type   | Requirement  | Description                                                                                           |
+| --------- | ------ | ------------ | ----------------------------------------------------------------------------------------------------- |
+| type      | string | **Required** | `custom:config-template-card`                                                                         |
+| card      | object | **Required** | Card object                                                                                           |
+| entities  | list   | **Optional** | List of entity strings that should be watched for updates                                             |
+| variables | list   | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars` |
 
 ### Available variables for templating
-`this.hass` - The [hass](https://developers.home-assistant.io/docs/en/frontend_data.html) object
 
-`states` - The [states](https://developers.home-assistant.io/docs/en/frontend_data.html#hassstates) object
-
-`user` - The [user](https://developers.home-assistant.io/docs/en/frontend_data.html#hassuser) object
-
-`vars` - Defined by `variables` configuration and accessible in your templates starting at the 0th index as your firstly defined variable to help clean up your templates
+| Variable    | Description                                                                                                                                                      |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `this.hass` | The [hass](https://developers.home-assistant.io/docs/en/frontend_data.html) object                                                                               |
+| `states`    | The [states](https://developers.home-assistant.io/docs/en/frontend_data.html#hassstates) object                                                                  |
+| `user`      | The [user](https://developers.home-assistant.io/docs/en/frontend_data.html#hassuser) object                                                                      |
+| `vars`      | Defined by `variables` configuration and accessible in your templates starting at the 0th index as your firstly defined variable to help clean up your templates |
 
 ```yaml
-type: 'custom:config-template-card'
+type: "custom:config-template-card"
 variables:
   - states['light.bed_light'].state
   - states['cover.garage_door'].state
@@ -90,16 +81,13 @@ card:
 [Troubleshooting](https://github.com/thomasloven/hass-config/wiki/Lovelace-Plugins)
 
 ## Developers
+
 Fork and then clone the repo to your local machine. From the cloned directory run
 
 `npm install && npm run build`
 
-[buymecoffee]: https://www.buymeacoffee.com/iantrich
-[buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
 [commits-shield]: https://img.shields.io/github/commit-activity/y/custom-cards/config-template-card.svg?style=for-the-badge
 [commits]: https://github.com/custom-cards/config-template-card/commits/master
-[customupdater]: https://github.com/custom-components/custom_updater
-[customupdaterbadge]: https://img.shields.io/badge/custom__updater-true-success.svg?style=for-the-badge
 [discord]: https://discord.gg/Qa5fW2R
 [discord-shield]: https://img.shields.io/discord/330944238910963714.svg?style=for-the-badge
 [forum-shield]: https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge

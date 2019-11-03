@@ -7,26 +7,45 @@ import {
   PropertyValues
 } from "lit-element";
 import deepClone from "deep-clone-simple";
+import { HomeAssistant, fireEvent } from "custom-card-helpers";
 
-import { ConfigTemplateConfig, HomeAssistant } from "./types";
-import { fireEvent } from "./fire-event";
+import { ConfigTemplateConfig } from "./types";
+import { CARD_VERSION } from "./const";
+
+/* eslint no-console: 0 */
+console.info(
+  `%c  CONFIG_TEMPLATE-CARD  \n%c  Version ${CARD_VERSION}         `,
+  "color: orange; font-weight: bold; background: black",
+  "color: white; font-weight: bold; background: dimgray"
+);
 
 @customElement("config-template-card")
 class ConfigTemplateCard extends LitElement {
   @property() public hass?: HomeAssistant;
-
   @property() private _config?: ConfigTemplateConfig;
 
   public setConfig(config: ConfigTemplateConfig): void {
-    if (!config || !config.card || !config.card.type) {
+    if (!config) {
       throw new Error("Invalid configuration");
+    }
+
+    if (!config.card) {
+      throw new Error("No card defined");
+    }
+
+    if (!config.card.type) {
+      throw new Error("No card type defined");
+    }
+
+    if (!config.entities) {
+      throw new Error("No entities defined");
     }
 
     this._config = config;
   }
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
-    if (changedProps.has("_config") || !this._config!.entities) {
+    if (changedProps.has("_config")) {
       return true;
     }
 
@@ -35,9 +54,10 @@ class ConfigTemplateCard extends LitElement {
     if (oldHass) {
       let changed = false;
       this._config!.entities.forEach(entity => {
-        changed = changed || oldHass.states[entity] !== this.hass!.states[entity]
+        changed =
+          changed || oldHass.states[entity] !== this.hass!.states[entity];
       });
-      
+
       return changed;
     }
 
@@ -49,14 +69,8 @@ class ConfigTemplateCard extends LitElement {
       return html``;
     }
 
-    // this.hass.states
-    // this.hass.user.name
-
     let cardConfig = deepClone(this._config.card);
     cardConfig = this._evaluateConfig(cardConfig);
-
-    // console.log(this._config.config);
-    // console.log(cardConfig);
 
     const element = this.createThing(cardConfig);
     element.hass = this.hass;
@@ -103,13 +117,13 @@ class ConfigTemplateCard extends LitElement {
   private _evaluateTemplate(template: string): string {
     const user = this.hass!.user;
     const states = this.hass!.states;
-    const vars: any[] = []
-    
+    const vars: any[] = [];
+
     for (const v in this._config!.variables) {
       const newV = eval(this._config!.variables[v]);
       vars.push(newV);
     }
-    
+
     return eval(template.substring(2, template.length - 1));
   }
 

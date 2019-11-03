@@ -12,17 +12,6 @@ rules:
   no-nested-ternary: 0
   camelcase: 0
   no-unused-vars: 0
-  import/prefer-default-export: 0
-  no-param-reassign: 0
-  import/no-unresolved: 0
-  operator-linebreak: 0
-  arrow-parens: 0
-  quotes:
-    - 2
-    - double
-  comma-dangle:
-    - 2
-    - never
 globals:
   window: true
   Event: true
