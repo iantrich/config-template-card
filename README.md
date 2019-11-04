@@ -41,7 +41,7 @@ resources:
 | --------- | ------ | ------------ | ----------------------------------------------------------------------------------------------------- |
 | type      | string | **Required** | `custom:config-template-card`                                                                         |
 | card      | object | **Required** | Card object                                                                                           |
-| entities  | list   | **Optional** | List of entity strings that should be watched for updates                                             |
+| entities  | list   | **Required** | List of entity strings that should be watched for updates                                             |
 | variables | list   | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars` |
 
 ### Available variables for templating
