@@ -7,7 +7,7 @@ import { CARD_VERSION } from './const';
 
 /* eslint no-console: 0 */
 console.info(
-  `%c  CONFIG_TEMPLATE-CARD  \n%c  Version ${CARD_VERSION}         `,
+  `%c  CONFIG-TEMPLATE-CARD  \n%c  Version ${CARD_VERSION}         `,
   'color: orange; font-weight: bold; background: black',
   'color: white; font-weight: bold; background: dimgray',
 );
