@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { LitElement, html, customElement, property, TemplateResult, PropertyValues } from 'lit-element';
 import deepClone from 'deep-clone-simple';
 import { HomeAssistant, createThing } from 'custom-card-helpers';
@@ -16,6 +17,7 @@ console.info(
 export class ConfigTemplateCard extends LitElement {
   @property() public hass?: HomeAssistant;
   @property() private _config?: ConfigTemplateConfig;
+  @property() private _helpers?: any;
 
   public setConfig(config: ConfigTemplateConfig): void {
     if (!config) {
@@ -35,6 +37,8 @@ export class ConfigTemplateCard extends LitElement {
     }
 
     this._config = config;
+
+    this.loadCardHelpers();
   }
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
@@ -66,12 +70,16 @@ export class ConfigTemplateCard extends LitElement {
     let cardConfig = deepClone(this._config.card);
     cardConfig = this._evaluateConfig(cardConfig);
 
-    const element = createThing(cardConfig);
+    const element = this._helpers ? this._helpers.createCardElement(cardConfig) : createThing(cardConfig);
     element.hass = this.hass;
 
     return html`
       ${element}
     `;
+  }
+
+  private async loadCardHelpers(): Promise<void> {
+    this._helpers = await (window as any).loadCardHelpers();
   }
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
