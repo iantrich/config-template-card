@@ -62,7 +62,7 @@ entities:
   - alarm_control_panel.ha_alarm
   - climate.ecobee
 card:
-  type: "${vars[0] === 'on' ? 'custom:hui-glance-card' : 'custom:hui-entities-card'}"
+  type: "${vars[0] === 'on' ? 'glance' : 'entities'}"
   entities:
     - entity: alarm_control_panel.ha_alarm
       name: "${vars[1] === 'open' && states['alarm_control_panel.ha_alarm'].state === 'armed_home' ? 'Close the garage!' : ''}"
@@ -74,7 +74,7 @@ card:
       icon: "${vars[1] === 'open' ? 'mdi:hotel' : '' }"
 ```
 
-### Note: All templates must be enclosed by `${}` and card type must custom even for core. e.g. custom:hui-shopping-list-card
+### Note: All templates must be enclosed by `${}`
 
 [Troubleshooting](https://github.com/thomasloven/hass-config/wiki/Lovelace-Plugins)
 
