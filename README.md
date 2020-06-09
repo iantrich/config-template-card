@@ -66,7 +66,7 @@ entities:
   - alarm_control_panel.alarm
   - climate.ecobee
 card:
-  type: "${vars[0] === 'on' ? 'custom:hui-glance-card' : 'custom:hui-entities-card'}"
+  type: "${vars[0] === 'on' ? 'glance' : 'entities'}"
   entities:
     - entity: alarm_control_panel.alarm
       name: "${vars[1] === 'open' && states['alarm_control_panel.alarm'].state === 'armed_home' ? 'Close the garage!' : ''}"
