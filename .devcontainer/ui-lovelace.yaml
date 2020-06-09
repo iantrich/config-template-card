@@ -1,8 +1,14 @@
-resources:
-  - url: http://127.0.0.1:5000/config-template-card.js
-    type: module
 views:
   - cards:
+      - type: 'custom:config-template-card'
+        variables:
+          - states['sensor.light'].state
+        entities:
+          - '${vars[0]}'
+        card:
+          type: light
+          entity: '${vars[0]}'
+          name: "${states[vars[0]].state === 'on' ? 'Light On' : 'Light Off'}"
       - type: 'custom:config-template-card'
         variables:
           - states['light.bed_light'].state
@@ -10,13 +16,13 @@ views:
         entities:
           - light.bed_light
           - cover.garage_door
-          - alarm_control_panel.ha_alarm
+          - alarm_control_panel.alarm
           - climate.ecobee
         card:
           type: "${vars[0] === 'on' ? 'custom:hui-glance-card' : 'custom:hui-entities-card'}"
           entities:
-            - entity: alarm_control_panel.ha_alarm
-              name: "${vars[1] === 'open' && states['alarm_control_panel.ha_alarm'].state === 'armed_home' ? 'Close the garage!' : ''}"
+            - entity: alarm_control_panel.alarm
+              name: "${vars[1] === 'open' && states['alarm_control_panel.alarm'].state === 'armed_home' ? 'Close the garage!' : ''}"
             - entity: binary_sensor.basement_floor_wet
             - entity: climate.ecobee
               name: "${states['climate.ecobee'].attributes.current_temperature > 22 ? 'Cozy' : 'Too Hot/Cold'}"

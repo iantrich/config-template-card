@@ -17,6 +17,10 @@
 
 This card is for [Lovelace](https://www.home-assistant.io/lovelace) on [Home Assistant](https://www.home-assistant.io/) that allows you to use pretty much any valid Javascript on the hass object in your configuration
 
+## Minimum Home Assistant Version
+
+Home Assistant version 0.110.0 or higher is required as of release 1.2.0 of config-template-card
+
 ## Support
 
 Hey dude! Help me out for a couple of :beers: or a :coffee:!
@@ -29,8 +33,8 @@ Use [HACS](https://hacs.xyz) or follow this [guide](https://github.com/thomaslov
 
 ```yaml
 resources:
-  url: /local/config-template-card.js
-  type: module
+  - url: /local/config-template-card.js
+    type: module
 ```
 
 ## Options
@@ -39,7 +43,7 @@ resources:
 | --------- | ------ | ------------ | ----------------------------------------------------------------------------------------------------- |
 | type      | string | **Required** | `custom:config-template-card`                                                                         |
 | card      | object | **Required** | Card object                                                                                           |
-| entities  | list   | **Required** | List of entity strings that should be watched for updates                                             |
+| entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here                 |
 | variables | list   | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars` |
 
 ### Available variables for templating
@@ -52,20 +56,20 @@ resources:
 | `vars`      | Defined by `variables` configuration and accessible in your templates starting at the 0th index as your firstly defined variable to help clean up your templates |
 
 ```yaml
-type: "custom:config-template-card"
+type: 'custom:config-template-card'
 variables:
   - states['light.bed_light'].state
   - states['cover.garage_door'].state
 entities:
   - light.bed_light
   - cover.garage_door
-  - alarm_control_panel.ha_alarm
+  - alarm_control_panel.alarm
   - climate.ecobee
 card:
   type: "${vars[0] === 'on' ? 'custom:hui-glance-card' : 'custom:hui-entities-card'}"
   entities:
-    - entity: alarm_control_panel.ha_alarm
-      name: "${vars[1] === 'open' && states['alarm_control_panel.ha_alarm'].state === 'armed_home' ? 'Close the garage!' : ''}"
+    - entity: alarm_control_panel.alarm
+      name: "${vars[1] === 'open' && states['alarm_control_panel.alarm'].state === 'armed_home' ? 'Close the garage!' : ''}"
     - entity: binary_sensor.basement_floor_wet
     - entity: climate.ecobee
       name: "${states['climate.ecobee'].attributes.current_temperature > 22 ? 'Cozy' : 'Too Hot/Cold'}"
@@ -74,7 +78,21 @@ card:
       icon: "${vars[1] === 'open' ? 'mdi:hotel' : '' }"
 ```
 
-### Note: All templates must be enclosed by `${}` and card type must custom even for core. e.g. custom:hui-shopping-list-card
+Templated entities example
+
+```yaml
+type: 'custom:config-template-card'
+variables:
+  - states['sensor.light'].state
+entities:
+  - '${vars[0]}'
+card:
+  type: light
+  entity: '${vars[0]}'
+  name: "${states[vars[0]].state === 'on' ? 'Light On' : 'Light Off'}"
+```
+
+### Note: All templates must be enclosed by `${}`
 
 [Troubleshooting](https://github.com/thomasloven/hass-config/wiki/Lovelace-Plugins)
 

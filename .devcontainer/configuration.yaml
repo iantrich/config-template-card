@@ -1,4 +1,12 @@
 default_config:
 lovelace:
   mode: yaml
+  resources:
+    - url: http://127.0.0.1:5000/config-template-card.js
+      type: module
 demo:
+sensor:
+  - platform: template
+    sensors:
+      light:
+        value_template: light.bed_light

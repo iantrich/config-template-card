@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { LitElement, html, customElement, property, TemplateResult, PropertyValues } from 'lit-element';
 import deepClone from 'deep-clone-simple';
-import { HomeAssistant, createThing } from 'custom-card-helpers';
+import { HomeAssistant } from 'custom-card-helpers';
 
 import { ConfigTemplateConfig } from './types';
 import { CARD_VERSION } from './const';
@@ -18,6 +18,7 @@ export class ConfigTemplateCard extends LitElement {
   @property() public hass?: HomeAssistant;
   @property() private _config?: ConfigTemplateConfig;
   @property() private _helpers?: any;
+  private _initialized = false;
 
   public setConfig(config: ConfigTemplateConfig): void {
     if (!config) {
@@ -42,6 +43,10 @@ export class ConfigTemplateCard extends LitElement {
   }
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
+    if (!this._initialized) {
+      this._initialize();
+    }
+
     if (changedProps.has('_config')) {
       return true;
     }
@@ -52,7 +57,12 @@ export class ConfigTemplateCard extends LitElement {
       if (oldHass) {
         let changed = false;
         this._config.entities.forEach(entity => {
-          changed = changed || Boolean(this.hass && oldHass.states[entity] !== this.hass.states[entity]);
+          changed =
+            changed ||
+            Boolean(
+              this.hass &&
+                oldHass.states[this._evaluateTemplate(entity)] !== this.hass.states[this._evaluateTemplate(entity)],
+            );
         });
 
         return changed;
@@ -63,19 +73,26 @@ export class ConfigTemplateCard extends LitElement {
   }
 
   protected render(): TemplateResult | void {
-    if (!this._config || !this.hass) {
+    if (!this._config || !this.hass || !this._helpers) {
       return html``;
     }
 
     let cardConfig = deepClone(this._config.card);
     cardConfig = this._evaluateConfig(cardConfig);
 
-    const element = this._helpers ? this._helpers.createCardElement(cardConfig) : createThing(cardConfig);
+    const element = this._helpers.createCardElement(cardConfig);
     element.hass = this.hass;
 
     return html`
       ${element}
     `;
+  }
+
+  private _initialize(): void {
+    if (this.hass === undefined) return;
+    if (this._config === undefined) return;
+    if (this._helpers === undefined) return;
+    this._initialized = true;
   }
 
   private async loadCardHelpers(): Promise<void> {
@@ -119,6 +136,10 @@ export class ConfigTemplateCard extends LitElement {
   }
 
   private _evaluateTemplate(template: string): string {
+    if (!template.includes('${')) {
+      return template;
+    }
+
     /* eslint-disable @typescript-eslint/no-unused-vars */
     const user = this.hass ? this.hass.user : undefined;
     const states = this.hass ? this.hass.states : undefined;
