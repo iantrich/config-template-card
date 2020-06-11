@@ -83,7 +83,7 @@ Templated entities example
 ```yaml
 type: 'custom:config-template-card'
 variables:
-  - states['sensor.light'].state
+  - states['sensor.light'].entity_id
 entities:
   - '${vars[0]}'
 card:
