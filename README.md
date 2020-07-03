@@ -50,9 +50,9 @@ resources:
 
 | Variable    | Description                                                                                                                                                      |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `this.hass` | The [hass](https://developers.home-assistant.io/docs/en/frontend_data.html) object                                                                               |
-| `states`    | The [states](https://developers.home-assistant.io/docs/en/frontend_data.html#hassstates) object                                                                  |
-| `user`      | The [user](https://developers.home-assistant.io/docs/en/frontend_data.html#hassuser) object                                                                      |
+| `this.hass` | The [hass](https://developers.home-assistant.io/docs/frontend/data/) object                                                                               |
+| `states`    | The [states](https://developers.home-assistant.io/docs/frontend/data/#hassstates) object                                                                  |
+| `user`      | The [user](https://developers.home-assistant.io/docs/frontend/data/#hassuser) object                                                                      |
 | `vars`      | Defined by `variables` configuration and accessible in your templates starting at the 0th index as your firstly defined variable to help clean up your templates |
 
 ```yaml
