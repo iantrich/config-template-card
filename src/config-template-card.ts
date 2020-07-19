@@ -152,7 +152,7 @@ export class ConfigTemplateCard extends LitElement {
       }
     }
 
-    template = template.replace(/\n/g, "")
+    template = template.replace(/\n/g, '');
     return eval(template.substring(2, template.length - 1));
   }
 }
