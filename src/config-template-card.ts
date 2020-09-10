@@ -143,15 +143,29 @@ export class ConfigTemplateCard extends LitElement {
     /* eslint-disable @typescript-eslint/no-unused-vars */
     const user = this.hass ? this.hass.user : undefined;
     const states = this.hass ? this.hass.states : undefined;
-    const vars: any[] = [];
+    let vars: any[] | { [key: string]: any };
+    let varDef = '';
 
     if (this._config) {
-      for (const v in this._config.variables) {
-        const newV = eval(this._config.variables[v]);
-        vars.push(newV);
+      if (Array.isArray(this._config.variables)) {
+        // if variables is an array, create vars as an array
+        vars = [];
+        for (const v in this._config.variables) {
+          const newV = eval(this._config.variables[v]);
+          vars.push(newV);
+        }
+      } else {
+        // if it is an object, then create a key-value map containing
+        // the values
+        vars = {};
+        for (const varName in this._config.variables) {
+          const newV = eval(this._config.variables[varName]);
+          vars[varName] = newV;
+          // create variable definitions to be injected:
+          varDef = varDef + `var ${varName} = vars['${varName}'];\n`;
+        }
       }
     }
-
-    return eval(template.substring(2, template.length - 1));
+    return eval(varDef + template.substring(2, template.length - 1));
   }
 }
