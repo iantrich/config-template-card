@@ -39,43 +39,43 @@ resources:
 
 ## Options
 
-| Name      | Type   | Requirement  | Description                                                                                           |
-| --------- | ------ | ------------ | ----------------------------------------------------------------------------------------------------- |
-| type      | string | **Required** | `custom:config-template-card`                                                                         |
-| card      | object | **Required** | Card object                                                                                           |
-| entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here                 |
-| variables | list   | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars` |
+| Name      | Type        | Requirement  | Description                                                                                                      |
+| --------- | ----------- | ------------ | ---------------------------------------------------------------------------------------------------------------- |
+| type      | string      | **Required** | `custom:config-template-card`                                                                                    |
+| card      | object      | **Required** | Card object                                                                                                      |
+| entities  | list        | **Required** | List of entity strings that should be watched for updates. Templates can be used here                            |
+| variables | list/object | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars` or by name |
 
 ### Available variables for templating
 
-| Variable    | Description                                                                                                                                                      |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `this.hass` | The [hass](https://developers.home-assistant.io/docs/frontend/data/) object                                                                               |
-| `states`    | The [states](https://developers.home-assistant.io/docs/frontend/data/#hassstates) object                                                                  |
-| `user`      | The [user](https://developers.home-assistant.io/docs/frontend/data/#hassuser) object                                                                      |
-| `vars`      | Defined by `variables` configuration and accessible in your templates starting at the 0th index as your firstly defined variable to help clean up your templates |
+| Variable    | Description                                                                                                                                                                                                                                                                                                                                                                                           |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `this.hass` | The [hass](https://developers.home-assistant.io/docs/frontend/data/) object                                                                                                                                                                                                                                                                                                                           |
+| `states`    | The [states](https://developers.home-assistant.io/docs/frontend/data/#hassstates) object                                                                                                                                                                                                                                                                                                              |
+| `user`      | The [user](https://developers.home-assistant.io/docs/frontend/data/#hassuser) object                                                                                                                                                                                                                                                                                                                  |
+| `vars`      | Defined by `variables` configuration and accessible in your templates to help clean them up. If `variables` in the configuration is a yaml list, then `vars` is an array starting at the 0th index as your firstly defined variable. If `variables` is an object in the configuration, then `vars` is a string-indexed map and you can also access the variables by name without using `vars` at all. |
 
 ```yaml
 type: 'custom:config-template-card'
 variables:
-  - states['light.bed_light'].state
-  - states['cover.garage_door'].state
+  LIGHT_STATE: states['light.bed_light'].state
+  GARAGE_STATE: states['cover.garage_door'].state
 entities:
   - light.bed_light
   - cover.garage_door
   - alarm_control_panel.alarm
   - climate.ecobee
 card:
-  type: "${vars[0] === 'on' ? 'glance' : 'entities'}"
+  type: "${LIGHT_STATE === 'on' ? 'glance' : 'entities'}"
   entities:
     - entity: alarm_control_panel.alarm
-      name: "${vars[1] === 'open' && states['alarm_control_panel.alarm'].state === 'armed_home' ? 'Close the garage!' : ''}"
+      name: "${GARAGE_STATE === 'open' && states['alarm_control_panel.alarm'].state === 'armed_home' ? 'Close the garage!' : ''}"
     - entity: binary_sensor.basement_floor_wet
     - entity: climate.ecobee
       name: "${states['climate.ecobee'].attributes.current_temperature > 22 ? 'Cozy' : 'Too Hot/Cold'}"
     - entity: cover.garage_door
-    - entity: "${vars[0] === 'on' ? 'light.bed_light' : 'climate.ecobee'}"
-      icon: "${vars[1] === 'open' ? 'mdi:hotel' : '' }"
+    - entity: "${LIGHT_STATE === 'on' ? 'light.bed_light' : 'climate.ecobee'}"
+      icon: "${GARAGE_STATE === 'open' ? 'mdi:hotel' : '' }"
 ```
 
 Templated entities example
