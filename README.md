@@ -78,7 +78,7 @@ card:
       icon: "${GARAGE_STATE === 'open' ? 'mdi:hotel' : '' }"
 ```
 
-Templated entities example
+## Templated entities example
 
 ```yaml
 type: 'custom:config-template-card'
@@ -90,6 +90,33 @@ card:
   type: light
   entity: '${vars[0]}'
   name: "${states[vars[0]].state === 'on' ? 'Light On' : 'Light Off'}"
+```
+
+## Defining global functions in variables
+
+If you find yourself having to rewrite the same logic in multiple locations, you can define global methods inside Config Template Card's variables, which can be called anywhere within the scope of the card:
+
+```yaml
+type: 'custom:config-template-card'
+  variables:
+    setTempMessage: |
+      temp => {
+        if (temp <= 19) {
+            return 'Quick, get a blanket!';
+        }
+        else if (temp >= 20 && temp <= 22) {
+          return 'Cozy!';
+        }
+        return 'It's getting hot in here...';
+      }
+    currentTemp: states['climate.ecobee'].attributes.current_temperature
+  entities:
+    - climate.ecobee
+  card:
+    type: entities
+    entities:
+      - entity: climate.ecobee
+        name: '${ setTempMessage(currentTemp) }'
 ```
 
 ### Note: All templates must be enclosed by `${}`
