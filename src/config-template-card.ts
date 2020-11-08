@@ -1,7 +1,14 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { LitElement, html, customElement, property, TemplateResult, PropertyValues } from 'lit-element';
+import {
+  LitElement,
+  html,
+  customElement,
+  property,
+  TemplateResult,
+  PropertyValues,
+  internalProperty,
+} from 'lit-element';
 import deepClone from 'deep-clone-simple';
-import { HomeAssistant, LovelaceElementConfigBase } from 'custom-card-helpers';
+import { HomeAssistant } from 'custom-card-helpers';
 
 import { ConfigTemplateConfig } from './types';
 import { CARD_VERSION } from './const';
@@ -15,9 +22,9 @@ console.info(
 
 @customElement('config-template-card')
 export class ConfigTemplateCard extends LitElement {
-  @property() public hass?: HomeAssistant;
-  @property() private _config?: ConfigTemplateConfig;
-  @property() private _helpers?: any;
+  @property({ attribute: false }) public hass?: HomeAssistant;
+  @internalProperty() private _config?: ConfigTemplateConfig;
+  @internalProperty() private _helpers?: any;
   private _initialized = false;
 
   public setConfig(config: ConfigTemplateConfig): void {
@@ -161,15 +168,29 @@ export class ConfigTemplateCard extends LitElement {
     /* eslint-disable @typescript-eslint/no-unused-vars */
     const user = this.hass ? this.hass.user : undefined;
     const states = this.hass ? this.hass.states : undefined;
-    const vars: any[] = [];
+    let vars: any[] | { [key: string]: any };
+    let varDef = '';
 
     if (this._config) {
-      for (const v in this._config.variables) {
-        const newV = eval(this._config.variables[v]);
-        vars.push(newV);
+      if (Array.isArray(this._config.variables)) {
+        // if variables are an array, create vars as an array
+        vars = [];
+        for (const v in this._config.variables) {
+          const newV = eval(this._config.variables[v]);
+          vars.push(newV);
+        }
+      } else {
+        // if it is an object, then create a key-value map containing
+        // the values
+        vars = {};
+        for (const varName in this._config.variables) {
+          const newV = eval(this._config.variables[varName]);
+          vars[varName] = newV;
+          // create variable definitions to be injected:
+          varDef = varDef + `var ${varName} = vars['${varName}'];\n`;
+        }
       }
     }
-
-    return eval(template.substring(2, template.length - 1));
+    return eval(varDef + template.substring(2, template.length - 1));
   }
 }
