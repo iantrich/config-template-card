@@ -47,7 +47,7 @@ resources:
 | card      | object | **Optional** | Card configuration. (A card, row, or element configuaration must be provided)                                    |
 | row       | object | **Optional** | Row configuration. (A card, row, or element configuaration must be provided)                                     |
 | element   | object | **Optional** | Element configuration. (A card, row, or element configuaration must be provided)                                 |
-| card      | object | **Optional** | Style configuration. (Required if you use an element)                                                            |
+| style     | object | **Optional** | Style configuration. (Required if you use an element)                                                            |
 
 ### Available variables for templating
 
