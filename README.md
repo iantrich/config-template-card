@@ -42,9 +42,12 @@ resources:
 | Name      | Type   | Requirement  | Description                                                                                           |
 | --------- | ------ | ------------ | ----------------------------------------------------------------------------------------------------- |
 | type      | string | **Required** | `custom:config-template-card`                                                                         |
-| card      | object | **Required** | Card object                                                                                           |
 | entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here                 |
 | variables | list   | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars` |
+| card      | object | **Optional** | Card configuration. (A card, row, or element configuaration must be provided)                         |
+| row       | object | **Optional** | Row configuration. (A card, row, or element configuaration must be provided)                          |
+| element   | object | **Optional** | Element configuration. (A card, row, or element configuaration must be provided)                      |
+| card      | object | **Optional** | Style configuration. (Required if you use an element)                                                 |
 
 ### Available variables for templating
 
@@ -90,6 +93,43 @@ card:
   type: light
   entity: '${vars[0]}'
   name: "${states[vars[0]].state === 'on' ? 'Light On' : 'Light Off'}"
+```
+
+Picture-elements card example
+
+```yaml
+type: picture-elements
+image: http://hs.sbcounty.gov/CN/Photo%20Gallery/_t/Sample%20Picture%20-%20Koala_jpg.jpg?Mobile=0
+elements:
+  - type: 'custom:config-template-card'
+    variables:
+      - states['light.bed_light'].state
+    entities:
+      - light.bed_light
+    element:
+      type: icon
+      icon: "${vars[0] === 'on' ? 'mdi:home' : 'mdi:circle'}"
+    style:
+      top: 47%
+      left: 75%
+```
+
+\*\*Note how the `style` object is on the config-template-card itself and not within the element configuration.
+
+Entities card example
+
+```yaml
+type: entities
+entities:
+  - type: 'custom:config-template-card'
+    variables:
+      - states['light.bed_light'].state
+    entities:
+      - light.bed_light
+    row:
+      type: section
+      label: "${vars[0] === 'on' ? 'Light On' : 'Light Off'}"
+  - entity: light.bed_light
 ```
 
 ### Note: All templates must be enclosed by `${}`

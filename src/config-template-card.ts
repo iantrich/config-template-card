@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { LitElement, html, customElement, property, TemplateResult, PropertyValues } from 'lit-element';
 import deepClone from 'deep-clone-simple';
-import { HomeAssistant } from 'custom-card-helpers';
+import { HomeAssistant, LovelaceElementConfigBase } from 'custom-card-helpers';
 
 import { ConfigTemplateConfig } from './types';
 import { CARD_VERSION } from './const';
@@ -25,12 +25,16 @@ export class ConfigTemplateCard extends LitElement {
       throw new Error('Invalid configuration');
     }
 
-    if (!config.card) {
-      throw new Error('No card defined');
+    if (!config.card && !config.row && !config.element) {
+      throw new Error('No card or row or element defined');
     }
 
-    if (!config.card.type) {
+    if (config.card && !config.card.type) {
       throw new Error('No card type defined');
+    }
+
+    if (config.element && !config.element.style) {
+      throw new Error('No style defined for element');
     }
 
     if (!config.entities) {
@@ -73,14 +77,28 @@ export class ConfigTemplateCard extends LitElement {
   }
 
   protected render(): TemplateResult | void {
-    if (!this._config || !this.hass || !this._helpers) {
+    if (
+      !this._config ||
+      !this.hass ||
+      !this._helpers ||
+      (!this._config.card && !this._config.row && !this._config.element)
+    ) {
       return html``;
     }
 
-    let cardConfig = deepClone(this._config.card);
-    cardConfig = this._evaluateConfig(cardConfig);
+    let config = this._config.card
+      ? deepClone(this._config.card)
+      : this._config.row
+      ? deepClone(this._config.row)
+      : deepClone(this._config.element);
 
-    const element = this._helpers.createCardElement(cardConfig);
+    config = this._evaluateConfig(config);
+
+    const element = this._config.card
+      ? this._helpers.createCardElement(config)
+      : this._config.row
+      ? this._helpers.createRowElement(config)
+      : this._helpers.createHuiElement(config);
     element.hass = this.hass;
 
     return html`
