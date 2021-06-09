@@ -25,8 +25,6 @@ export class ConfigTemplateCard extends LitElement {
   @property({ attribute: false }) public hass?: HomeAssistant;
   @internalProperty() private _config?: ConfigTemplateConfig;
   @internalProperty() private _helpers?: any;
-  private _variables = '';
-  private _vars?: any[] | { [key: string]: any };
   private _initialized = false;
 
   public setConfig(config: ConfigTemplateConfig): void {
@@ -51,36 +49,8 @@ export class ConfigTemplateCard extends LitElement {
     }
 
     this._config = config;
-    this.prepareVariablesString();
+
     this.loadCardHelpers();
-  }
-
-  private prepareVariablesString(): void {
-    let vars: any[] | { [key: string]: any } | undefined = void 0;
-    let varDef = '';
-
-    if (this._config) {
-      if (Array.isArray(this._config.variables)) {
-        // if variables are an array, create vars as an array
-        vars = [];
-        for (const v in this._config.variables) {
-          const newV = eval(this._config.variables[v]);
-          vars.push(newV);
-        }
-      } else {
-        // if it is an object, then create a key-value map containing
-        // the values
-        vars = {};
-        for (const varName in this._config.variables) {
-          const newV = eval(this._config.variables[varName]);
-          vars[varName] = newV;
-          // create variable definitions to be injected:
-          varDef = varDef + `var ${varName} = vars['${varName}'];\n`;
-        }
-      }
-    }
-    this._vars = vars;
-    this._variables = varDef;
   }
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
@@ -191,12 +161,32 @@ export class ConfigTemplateCard extends LitElement {
       return template;
     }
 
-    // user, states and vars might be used in the eval context
     /* eslint-disable @typescript-eslint/no-unused-vars */
     const user = this.hass ? this.hass.user : undefined;
     const states = this.hass ? this.hass.states : undefined;
-    const vars = this._vars;
+    let vars: any[] | { [key: string]: any };
+    let varDef = '';
 
-    return eval(this._variables + template.substring(2, template.length - 1));
+    if (this._config) {
+      if (Array.isArray(this._config.variables)) {
+        // if variables are an array, create vars as an array
+        vars = [];
+        for (const v in this._config.variables) {
+          const newV = eval(this._config.variables[v]);
+          vars.push(newV);
+        }
+      } else {
+        // if it is an object, then create a key-value map containing
+        // the values
+        vars = {};
+        for (const varName in this._config.variables) {
+          const newV = eval(this._config.variables[varName]);
+          vars[varName] = newV;
+          // create variable definitions to be injected:
+          varDef = varDef + `var ${varName} = vars['${varName}'];\n`;
+        }
+      }
+    }
+    return eval(varDef + template.substring(2, template.length - 1));
   }
 }
