@@ -66,17 +66,13 @@ export class ConfigTemplateCard extends LitElement {
       const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
 
       if (oldHass) {
-        let changed = false;
-        this._config.entities.forEach(entity => {
-          changed =
-            changed ||
-            Boolean(
-              this.hass &&
-                oldHass.states[this._evaluateTemplate(entity)] !== this.hass.states[this._evaluateTemplate(entity)],
-            );
-        });
-
-        return changed;
+        for (const entity of this._config.entities) {
+          const evaluatedTemplate = this._evaluateTemplate(entity);
+          if (Boolean(this.hass && oldHass.states[evaluatedTemplate] !== this.hass.states[evaluatedTemplate])) {
+            return true;
+          }
+        }
+        return false;
       }
     }
 
