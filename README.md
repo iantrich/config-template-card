@@ -57,6 +57,7 @@ resources:
 | `states`    | The [states](https://developers.home-assistant.io/docs/frontend/data/#hassstates) object                                                                                                                                                                                                                                                                                                              |
 | `user`      | The [user](https://developers.home-assistant.io/docs/frontend/data/#hassuser) object                                                                                                                                                                                                                                                                                                                  |
 | `vars`      | Defined by `variables` configuration and accessible in your templates to help clean them up. If `variables` in the configuration is a yaml list, then `vars` is an array starting at the 0th index as your firstly defined variable. If `variables` is an object in the configuration, then `vars` is a string-indexed map and you can also access the variables by name without using `vars` at all. |
+## Examples
 
 ```yaml
 type: 'custom:config-template-card'
@@ -81,7 +82,7 @@ card:
       icon: "${GARAGE_STATE === 'open' ? 'mdi:hotel' : '' }"
 ```
 
-## Templated entities example
+### Templated entities example
 
 ```yaml
 type: 'custom:config-template-card'
@@ -95,7 +96,7 @@ card:
   name: "${states[vars[0]].state === 'on' ? 'Light On' : 'Light Off'}"
 ```
 
-Picture-elements card example
+### Picture-elements card example
 
 ```yaml
 type: picture-elements
@@ -113,12 +114,11 @@ elements:
       top: 47%
       left: 75%
 ```
+Note how the `style` object is on the config-template-card itself and not within the element configuration.
 
-\*\*Note how the `style` object is on the config-template-card itself and not within the element configuration.
+### Entities card example
 
-Entities card example
-
-````yaml
+```yaml
 type: entities
 entities:
   - type: 'custom:config-template-card'
