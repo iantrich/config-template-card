@@ -39,8 +39,12 @@ export class ConfigTemplateCard extends LitElement {
     if (config.card && !config.card.type) {
       throw new Error('No card type defined');
     }
+    
+    if (config.card && config.card.type === 'picture-elements') {
+      console.warn('WARNING: config-template-card should not be used with the picture-elements card itself. Instead use it as one of the elements. Check the README for details'); 
+    }
 
-    if (config.element && !config.element.style) {
+    if (config.element && !config.style) {
       throw new Error('No style defined for element');
     }
 
