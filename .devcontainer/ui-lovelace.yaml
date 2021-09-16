@@ -3,6 +3,20 @@ views:
       - type: picture-elements
         image: http://hs.sbcounty.gov/CN/Photo%20Gallery/_t/Sample%20Picture%20-%20Koala_jpg.jpg?Mobile=0
         elements:
+          - type: custom:config-template-card
+            style:
+              top: 80.3%
+              left: 77.6%
+            entities:
+              - switch.ceiling_fan
+            element:
+              type: image
+              tap_action:
+                action: toggle
+              entity: switch.ceiling_fan
+              image: /local/floorplan/famfanoff.png
+              state_image:
+                'on': /local/floorplan/famfanon.png
           - type: 'custom:config-template-card'
             variables:
               - states['light.bed_light'].state
