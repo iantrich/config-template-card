@@ -106,7 +106,7 @@ elements:
     variables:
       - states['light.bed_light'].state
     entities:
-      - light.bed_ligh
+      - light.bed_light
       - sensor.light_icon_color
     element:
       type: icon
