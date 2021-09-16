@@ -46,8 +46,8 @@ export class ConfigTemplateCard extends LitElement {
       );
     }
 
-    if (config.element && !config.style) {
-      throw new Error('No style defined for element');
+    if (config.element && !config.element.type) {
+      throw new Error('No element type defined');
     }
 
     if (!config.entities) {
@@ -101,7 +101,12 @@ export class ConfigTemplateCard extends LitElement {
       ? deepClone(this._config.row)
       : deepClone(this._config.element);
 
+    let style = this._config.style ? deepClone(this._config.style) : {};
+
     config = this._evaluateConfig(config);
+    if (style) {
+      style = this._evaluateConfig(style);
+    }
 
     const element = this._config.card
       ? this._helpers.createCardElement(config)
@@ -109,6 +114,19 @@ export class ConfigTemplateCard extends LitElement {
       ? this._helpers.createRowElement(config)
       : this._helpers.createHuiElement(config);
     element.hass = this.hass;
+
+    if (this._config.element) {
+      if (style) {
+        Object.keys(style).forEach(prop => {
+          this.style.setProperty(prop, style[prop]);
+        });
+      }
+      if (config.style) {
+        Object.keys(config.style).forEach(prop => {
+          element.style.setProperty(prop, config.style[prop]);
+        });
+      }
+    }
 
     return html`
       ${element}
