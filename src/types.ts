@@ -7,5 +7,5 @@ export interface ConfigTemplateConfig {
   card?: LovelaceCardConfig;
   row?: EntitiesCardEntityConfig;
   element?: LovelaceElementConfigBase;
-  style?: string[];
+  style?: Record<string, string>;
 }

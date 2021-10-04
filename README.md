@@ -47,7 +47,7 @@ resources:
 | card      | object | **Optional** | Card configuration. (A card, row, or element configuaration must be provided)                                    |
 | row       | object | **Optional** | Row configuration. (A card, row, or element configuaration must be provided)                                     |
 | element   | object | **Optional** | Element configuration. (A card, row, or element configuaration must be provided)                                 |
-| style     | object | **Optional** | Style configuration. (Required if you use an element)                                                            |
+| style     | object | **Optional** | Style configuration.                                                                                             |
 
 ### Available variables for templating
 
@@ -107,14 +107,17 @@ elements:
       - states['light.bed_light'].state
     entities:
       - light.bed_light
+      - sensor.light_icon_color
     element:
       type: icon
       icon: "${vars[0] === 'on' ? 'mdi:home' : 'mdi:circle'}"
+      style:
+        '--paper-item-icon-color': '${ states[''sensor.light_icon_color''].state }'
     style:
       top: 47%
       left: 75%
 ```
-Note how the `style` object is on the config-template-card itself and not within the element configuration.
+The `style` object on the element configuration is applied to the element itself, the `style` object on the `config-template-card` is applied to the surrounding card, both can contain templated values. For example, in order to place the card properly, the `top` and `left` attributes must always be configured on the `config-template-card`.
 
 ### Entities card example
 
