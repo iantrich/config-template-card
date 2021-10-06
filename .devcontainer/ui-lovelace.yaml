@@ -7,6 +7,7 @@ views:
             style:
               top: 80.3%
               left: 77.6%
+              opacity: 10%
             entities:
               - switch.ceiling_fan
             element:

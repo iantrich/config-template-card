@@ -1,14 +1,6 @@
-import {
-  LitElement,
-  html,
-  customElement,
-  property,
-  TemplateResult,
-  PropertyValues,
-  internalProperty,
-} from 'lit-element';
+import { LitElement, html, customElement, property, TemplateResult, PropertyValues, state } from 'lit-element';
 import deepClone from 'deep-clone-simple';
-import { HomeAssistant } from 'custom-card-helpers';
+import { computeCardSize, HomeAssistant, LovelaceCard } from 'custom-card-helpers';
 
 import { ConfigTemplateConfig } from './types';
 import { CARD_VERSION } from './const';
@@ -23,8 +15,8 @@ console.info(
 @customElement('config-template-card')
 export class ConfigTemplateCard extends LitElement {
   @property({ attribute: false }) public hass?: HomeAssistant;
-  @internalProperty() private _config?: ConfigTemplateConfig;
-  @internalProperty() private _helpers?: any;
+  @state() private _config?: ConfigTemplateConfig;
+  @state() private _helpers?: any;
   private _initialized = false;
 
   public setConfig(config: ConfigTemplateConfig): void {
@@ -85,6 +77,18 @@ export class ConfigTemplateCard extends LitElement {
     return true;
   }
 
+  public getCardSize(): number | Promise<number> {
+    if (this.shadowRoot) {
+      const element = this.shadowRoot.querySelector('#card > *') as LovelaceCard;
+      if (element) {
+        console.log('computeCardSize is ' + computeCardSize(element));
+        return computeCardSize(element);
+      }
+    }
+
+    return 1;
+  }
+
   protected render(): TemplateResult | void {
     if (
       !this._config ||
@@ -129,7 +133,9 @@ export class ConfigTemplateCard extends LitElement {
     }
 
     return html`
-      ${element}
+      <div id="card">
+        ${element}
+      </div>
     `;
   }
 
