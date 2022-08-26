@@ -162,6 +162,22 @@ type: 'custom:config-template-card'
         name: '${ setTempMessage(currentTemp) }'
 ````
 
+## Dashboard wide variables
+
+If you need to use the same variable in multiple cards, then instead of defining it in each card's `variables` you can do that once for the entire dashboard.
+
+```yaml
+title: My dashboard
+
+config_template_card:
+  variables:
+    - states['sensor.light'].state
+
+views:
+```
+
+Both arrays and objects are supported, just like in card's local variables. It is allowed to mix the two types, i.e. use an array in dashboard variables and an object in card variables, or the other way around. If both definitions are arrays, then dashboard variables are put first in `vars`. In the mixed mode, `vars` have array indices and as well as variable names.
+
 ### Note: All templates must be enclosed by `${}`
 
 [Troubleshooting](https://github.com/thomasloven/hass-config/wiki/Lovelace-Plugins)
