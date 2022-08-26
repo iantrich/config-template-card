@@ -51,6 +51,30 @@ export class ConfigTemplateCard extends LitElement {
     this.loadCardHelpers();
   }
 
+  private getLovelacePanel() {
+    const ha = document.querySelector("home-assistant");
+
+    if (ha && ha.shadowRoot) {
+      const haMain = ha.shadowRoot.querySelector("home-assistant-main");
+
+      if (haMain && haMain.shadowRoot) {
+        return haMain.shadowRoot.querySelector('ha-panel-lovelace');
+      }
+    }
+
+    return null
+  }
+
+  private getLovelaceConfig() {
+    const panel = this.getLovelacePanel() as any;
+
+    if (panel && panel.lovelace && panel.lovelace.config && panel.lovelace.config.config_template_card) {
+      return panel.lovelace.config.config_template_card
+    }
+
+    return {}
+  }
+
   protected shouldUpdate(changedProps: PropertyValues): boolean {
     if (!this._initialized) {
       this._initialize();
@@ -194,29 +218,41 @@ export class ConfigTemplateCard extends LitElement {
     /* eslint-disable @typescript-eslint/no-unused-vars */
     const user = this.hass ? this.hass.user : undefined;
     const states = this.hass ? this.hass.states : undefined;
-    let vars: any[] | { [key: string]: any };
+    const vars: any[] = [];
+    const namedVars: { [key: string]: any } = {};
+    const arrayVars: string[] = [];
     let varDef = '';
 
     if (this._config) {
       if (Array.isArray(this._config.variables)) {
-        // if variables are an array, create vars as an array
-        vars = [];
-        for (const v in this._config.variables) {
-          const newV = eval(this._config.variables[v]);
-          vars.push(newV);
-        }
+        arrayVars.push(...this._config.variables);
       } else {
-        // if it is an object, then create a key-value map containing
-        // the values
-        vars = {};
-        for (const varName in this._config.variables) {
-          const newV = eval(this._config.variables[varName]);
-          vars[varName] = newV;
-          // create variable definitions to be injected:
-          varDef = varDef + `var ${varName} = vars['${varName}'];\n`;
-        }
+        Object.assign(namedVars, this._config.variables);
       }
     }
+
+    const localVars = this.getLovelaceConfig().variables;
+
+    if (localVars) {
+      if (Array.isArray(localVars)) {
+        arrayVars.push(...localVars);
+      } else {
+        Object.assign(namedVars, localVars);
+      }
+    }
+
+    for (const v in arrayVars) {
+      const newV = eval(arrayVars[v]);
+      vars.push(newV);
+    }
+
+    for (const varName in namedVars) {
+      const newV = eval(namedVars[varName]);
+      vars[varName] = newV;
+      // create variable definitions to be injected:
+      varDef = varDef + `var ${varName} = vars['${varName}'];\n`;
+    }
+
     return eval(varDef + template.substring(2, template.length - 1));
   }
 }
