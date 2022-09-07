@@ -68,8 +68,8 @@ export class ConfigTemplateCard extends LitElement {
   private getLovelaceConfig() {
     const panel = this.getLovelacePanel() as any;
 
-    if (panel && panel.lovelace && panel.lovelace.config && panel.lovelace.config.config_template_card) {
-      return panel.lovelace.config.config_template_card
+    if (panel && panel.lovelace && panel.lovelace.config && panel.lovelace.config.config_template_card_vars) {
+      return panel.lovelace.config.config_template_card_vars
     }
 
     return {}
@@ -231,7 +231,7 @@ export class ConfigTemplateCard extends LitElement {
       }
     }
 
-    const localVars = this.getLovelaceConfig().variables;
+    const localVars = this.getLovelaceConfig();
 
     if (localVars) {
       if (Array.isArray(localVars)) {

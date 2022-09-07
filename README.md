@@ -169,9 +169,8 @@ If you need to use the same variable in multiple cards, then instead of defining
 ```yaml
 title: My dashboard
 
-config_template_card:
-  variables:
-    - states['sensor.light'].state
+config_template_card_vars:
+  - states['sensor.light'].state
 
 views:
 ```
