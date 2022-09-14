@@ -218,6 +218,12 @@ export class ConfigTemplateCard extends LitElement {
       }
     }
 
+    if (template.startsWith("${") && template.endsWith("}")) {
+        // The entire property is a template, return eval's result directly
+        // to preserve types other than string (eg. numbers)
+        return eval(varDef + template.substring(2, template.length - 1));
+    }
+
     template.match(/\${[^}]+}/)!.forEach(m => {
       const repl = eval(varDef + m.substring(2, m.length - 1));
       template = template.replace(m, repl);
