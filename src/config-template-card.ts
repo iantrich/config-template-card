@@ -187,7 +187,7 @@ export class ConfigTemplateCard extends LitElement {
   }
 
   private _evaluateTemplate(template: string): string {
-    if (!template.includes('${')) {
+    if (!template.includes || !template.includes('${')) {
       return template;
     }
 
