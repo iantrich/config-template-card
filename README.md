@@ -4,7 +4,7 @@
 
 [![GitHub Release][releases-shield]][releases]
 [![License][license-shield]](LICENSE.md)
-[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge)](https://github.com/custom-components/hacs)
+[![hacs_badge](https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge)](https://github.com/hacs/integration)
 
 ![Project Maintenance][maintenance-shield]
 [![GitHub Activity][commits-shield]][commits]
@@ -184,6 +184,21 @@ type: 'custom:config-template-card'
       - entity: climate.ecobee
         name: '${ setTempMessage(currentTemp) }'
 ````
+
+## Dashboard wide variables
+
+If you need to use the same variable in multiple cards, then instead of defining it in each card's `variables` you can do that once for the entire dashboard.
+
+```yaml
+title: My dashboard
+
+config_template_card_vars:
+  - states['sensor.light'].state
+
+views:
+```
+
+Both arrays and objects are supported, just like in card's local variables. It is allowed to mix the two types, i.e. use an array in dashboard variables and an object in card variables, or the other way around. If both definitions are arrays, then dashboard variables are put first in `vars`. In the mixed mode, `vars` have array indices and as well as variable names.
 
 ### Note: All templates must be enclosed by `${}`
 
