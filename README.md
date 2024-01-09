@@ -87,13 +87,13 @@ card:
 ```yaml
 type: 'custom:config-template-card'
 variables:
-  - states['sensor.light'].state
+  - states['sensor.light']
 entities:
-  - '${vars[0]}'
+  - '${vars[0].entity_id}'
 card:
   type: light
-  entity: '${vars[0]}'
-  name: "${states[vars[0]].state === 'on' ? 'Light On' : 'Light Off'}"
+  entity: '${vars[0].entity_id}'
+  name: "${vars[0].state === 'on' ? 'Light On' : 'Light Off'}"
 ```
 
 ### Picture-elements card example
