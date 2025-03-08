@@ -202,6 +202,29 @@ Both arrays and objects are supported, just like in card's local variables. It i
 
 ### Note: All templates must be enclosed by `${}`
 
+
+
+## Referencing secrets
+
+Referencing secrets is only supported in yaml-mode dashboards.
+
+Example:
+```yaml
+type: custom:config-template-card
+entities:
+  - sun.sun
+variables:
+  VAR: config.secret_option
+card:
+  type: entities
+  entities:
+    - entity: sun.sun
+      name: ${VAR}
+secret_option: !secret some_super_secret
+```
+where `secret_option` is a user-defined option & can have any name.
+
+
 [Troubleshooting](https://github.com/thomasloven/hass-config/wiki/Lovelace-Plugins)
 
 ## Developers
