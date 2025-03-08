@@ -52,6 +52,38 @@ resources:
 \* At least one option (`card`, `row`, or `element`) must be provided.
 
 
+### Defining `variables` & `staticVariables`
+
+Both options may be defined as a list:
+```yaml
+variables:
+  - ...
+  - ...
+  - ...
+```
+or an object (yaml dictionary):
+```yaml
+variables:
+  ABC: ...
+  DEF: ...
+  GHI: ...
+```
+In both cases any variable may reference another variable which was defined before:
+```yaml
+variables:
+  - ...
+  - ... may refer to vars[0]
+  - ... may rever to vars[0] & vars[1]
+```
+```yaml
+variables:
+  ABC: ...
+  DEF: ... may refer to vars['ABC']
+  GHI: ... may refer to vars['ABC'] & vars['DEF']
+```
+Check [this chapter](#available-variables-for-templating) for more information about `vars` & `svars` variables.
+
+
 ### Available variables for templating
 
 | Variable    | Description                                                                                                                                                                                                                                                                                                                                                                                           |
