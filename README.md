@@ -50,6 +50,7 @@ resources:
 | style     | object | **Optional** | Style configuration                                                                                             |
 
 \* At least one option (`card`, `row`, or `element`) must be provided.
+
 \** An update occurs in following cases: a config of `config-template-card` or an inner card (row, element) is changed by a user,  any entity listed in `entities` option is updated.
 
 ### Defining `variables` & `staticVariables`
