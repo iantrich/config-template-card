@@ -159,6 +159,7 @@ variables:
 ```
 
 ### `config` example
+
 ```yaml
 type: custom:config-template-card
 entities:
@@ -177,6 +178,7 @@ card:
 ```
 
 ### `output` example
+
 ```yaml
 type: custom:config-template-card
 variables:
