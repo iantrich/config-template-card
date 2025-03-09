@@ -46,7 +46,7 @@ resources:
 | variables | list   | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars` or by name |
 | card      | object | **Optional**\* | Card configuration                                    |
 | row       | object | **Optional**\* | Row configuration for Entities card                                    |
-| element   | object | **Optional**\* | Element configuration for Picture elements card                                 |
+| element   | object | **Optional**\* | Element configuration for Picture elements card or Badge                                 |
 | style     | object | **Optional** | Style configuration                                                                                             |
 
 \* At least one option (`card`, `row`, or `element`) must be provided.
