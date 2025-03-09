@@ -194,7 +194,7 @@ card:
   type: entities
   entities: ${ENTITIES}
   title: >-
-    total: ${output.entities[0].length}
+    total: ${output.entities.length}
 ```
 
 
