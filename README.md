@@ -158,7 +158,7 @@ variables:
       # {{ states('sensor.time') }}
 ```
 
-## Using `config`
+### `config` example
 ```yaml
 type: custom:config-template-card
 entities:
@@ -176,7 +176,7 @@ card:
   hours_to_show: 4
 ```
 
-## Using `output`
+### `output` example
 ```yaml
 type: custom:config-template-card
 variables:
