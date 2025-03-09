@@ -176,6 +176,26 @@ card:
   hours_to_show: 4
 ```
 
+## Using `output`
+```yaml
+type: custom:config-template-card
+variables:
+  ENTITIES: |-
+    Object.keys(states)
+      .filter(
+        k => (
+          k.search('sensor.battery*') != -1
+        )
+      )
+entities: ${ENTITIES}
+card:
+  type: entities
+  entities: ${ENTITIES}
+  title: >-
+    total: ${output.entities[0].length}
+```
+
+
 
 ## Defining global functions in variables
 
