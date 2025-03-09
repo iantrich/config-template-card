@@ -172,6 +172,22 @@ entities:
   - entity: light.bed_light
 ```
 
+### Badge example
+
+```yaml
+badges:
+  - type: custom:config-template-card
+    variables:
+      VAR: states['sun.sun'].state
+    entities:
+      - sun.sun
+    element:
+      type: custom:hui-entity-badge
+      entity: sun.sun
+      show_name: true
+      name: ${VAR}
+```
+
 ### Markdown card example
 
 ```yaml
