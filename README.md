@@ -39,15 +39,15 @@ resources:
 
 ## Options
 
-| Name      | Type   | Requirement  | Description                                                                                                      |
-| --------- | ------ | ------------ | ---------------------------------------------------------------------------------------------------------------- |
-| type      | string | **Required** | `custom:config-template-card`                                                                                    |
-| entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here                            |
-| variables | list   | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars` or by name |
-| card      | object | **Optional** | Card configuration. (A card, row, or element configuaration must be provided)                                    |
-| row       | object | **Optional** | Row configuration. (A card, row, or element configuaration must be provided)                                     |
-| element   | object | **Optional** | Element configuration. (A card, row, or element configuaration must be provided)                                 |
-| style     | object | **Optional** | Style configuration.                                                                                             |
+| Name      | Type   | Requirement  | Description                                                                                                                                                            |
+| --------- | ------ | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| type      | string | **Required** | `custom:config-template-card`                                                                                                                                          |
+| entities  | list   | **Optional** | List of entity strings that should be watched for updates. Templates can be used here. Optional only if there are dashboard or view wide entities, otherwise required. |
+| variables | list   | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars` or by name                                                       |
+| card      | object | **Optional** | Card configuration. (A card, row, or element configuaration must be provided)                                                                                          |
+| row       | object | **Optional** | Row configuration. (A card, row, or element configuaration must be provided)                                                                                           |
+| element   | object | **Optional** | Element configuration. (A card, row, or element configuaration must be provided)                                                                                       |
+| style     | object | **Optional** | Style configuration.                                                                                                                                                   |
 
 ### Available variables for templating
 
@@ -185,20 +185,30 @@ type: 'custom:config-template-card'
         name: '${ setTempMessage("House: ", currentTemp) }'
 ````
 
-## Dashboard wide variables
+## Dashboard / view wide variables
 
-If you need to use the same variable in multiple cards, then instead of defining it in each card's `variables` you can do that once for the entire dashboard.
+If you need to use the same variable in multiple cards, then instead of defining it in each card's `variables` you can do that once for the entire dashboard or only individual views. In addition you can also define dashboard or view wide entities instead of adding them to each card's `entities`.
 
 ```yaml
 title: My dashboard
 
 config_template_card_vars:
   - states['sensor.light'].state
+config_template_card_entities:
+  - sensor.light
 
 views:
+  - title: My view
+
+    config_template_card_vars:
+      - states['sensor.otherlight'].state
+    config_template_card_entities:
+      - sensor.otherlight
+
+    cards:
 ```
 
-Both arrays and objects are supported, just like in card's local variables. It is allowed to mix the two types, i.e. use an array in dashboard variables and an object in card variables, or the other way around. If both definitions are arrays, then dashboard variables are put first in `vars`. In the mixed mode, `vars` have array indices and as well as variable names.
+Both arrays and objects are supported, just like in card's local variables. It is allowed to mix the two types, i.e. use an array in dashboard / view variables and an object in card variables, or the other way around. If both definitions are arrays, then dashboard variables are put first in `vars`, next view variables and finally local ones. In the mixed mode, `vars` have array indices and as well as variable names.
 
 ### Note: All templates must be enclosed by `${}`
 

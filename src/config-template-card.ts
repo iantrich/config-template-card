@@ -43,7 +43,7 @@ export class ConfigTemplateCard extends LitElement {
       throw new Error('No element type defined');
     }
 
-    if (!config.entities) {
+    if (this.getLovelacePanelEntities().length == 0 && this.getLovelaceViewEntities().length == 0 && !config.entities) {
       throw new Error('No entities defined');
     }
 
@@ -52,25 +52,63 @@ export class ConfigTemplateCard extends LitElement {
     void this.loadCardHelpers();
   }
 
-  private getLovelacePanel(): any {
+  private getLovelace(): any {
     const ha = document.querySelector('home-assistant');
     if (ha?.shadowRoot) {
       const haMain = ha.shadowRoot.querySelector('home-assistant-main');
       if (haMain?.shadowRoot) {
-        return haMain.shadowRoot.querySelector('ha-panel-lovelace');
+        const haPanel = haMain.shadowRoot.querySelector('ha-panel-lovelace');
+        if (haPanel?.shadowRoot) {
+          const huiRoot : any = haPanel.shadowRoot.querySelector('hui-root');
+          if (huiRoot) {
+            const ll = huiRoot.lovelace;
+            ll.current_view = huiRoot.___curView;
+            return ll;
+          }
+        }
       }
     }
     return null;
   }
 
-  private getLovelaceConfig(): any {
-    const panel = this.getLovelacePanel();
+  private getLovelacePanelConfig(): any {
+    const lovelace = this.getLovelace();
 
-    if (panel?.lovelace?.config?.config_template_card_vars) {
-      return panel.lovelace.config.config_template_card_vars;
+    if (lovelace?.config?.config_template_card_vars) {
+      return lovelace.config.config_template_card_vars;
     }
 
     return {};
+  }
+
+  private getLovelaceViewConfig(): any {
+    const lovelace = this.getLovelace();
+
+    if (lovelace?.config?.views[lovelace.current_view]?.config_template_card_vars) {
+      return lovelace.config.views[lovelace.current_view].config_template_card_vars;
+    }
+
+    return {};
+  }
+
+  private getLovelacePanelEntities() : any {
+    const lovelace = this.getLovelace();
+
+    if (lovelace?.config?.config_template_card_entities) {
+      return lovelace.config.config_template_card_entities;
+    }
+
+    return [];
+  }
+
+  private getLovelaceViewEntities() : any {
+    const lovelace = this.getLovelace();
+
+    if (lovelace?.current_view && lovelace?.config?.views[lovelace.current_view]?.config_template_card_entities) {
+      return lovelace.config.views[lovelace.current_view].config_template_card_entities;
+    }
+
+    return [];
   }
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
@@ -87,7 +125,25 @@ export class ConfigTemplateCard extends LitElement {
 
       if (oldHass) {
         this._evaluateVars();
-        for (const entity of this._evaluateStructure(structuredClone(this._config.entities))) {
+
+        const entities: string[] = [];
+        const panelEntities = this._evaluateStructure(structuredClone(this.getLovelacePanelEntities()));
+        if (Array.isArray(panelEntities)) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+          entities.push(...panelEntities);
+        }
+        const viewEntities = this._evaluateStructure(structuredClone(this.getLovelaceViewEntities()));
+        if (Array.isArray(viewEntities)) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+          entities.push(...viewEntities);
+        }
+        const localEntities = this._evaluateStructure(structuredClone(this._config.entities));
+        if (Array.isArray(localEntities)) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+          entities.push(...localEntities);
+        }
+
+        for (const entity of entities) {
           if (this.hass && oldHass.states[entity] !== this.hass.states[entity]) {
             return true;
           }
@@ -224,22 +280,32 @@ export class ConfigTemplateCard extends LitElement {
     cv._evalInit += "var user = this._curVars.user;\n";
     cv._evalInit += "var vars = this._curVars.vars;\n";
 
+    const panelVars = this.getLovelacePanelConfig();
+    if (panelVars) {
+      if (Array.isArray(panelVars)) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        arrayVars.push(...panelVars);
+      } else {
+        Object.assign(namedVars, panelVars);
+      }
+    }
+
+    const viewVars = this.getLovelaceViewConfig();
+    if (viewVars) {
+      if (Array.isArray(viewVars)) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        arrayVars.push(...viewVars);
+      } else {
+        Object.assign(namedVars, viewVars);
+      }
+    }
+
     if (this._config?.variables) {
       if (Array.isArray(this._config.variables)) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         arrayVars.push(...this._config.variables);
       } else {
         Object.assign(namedVars, this._config.variables);
-      }
-    }
-
-    const localVars = this.getLovelaceConfig();
-    if (localVars) {
-      if (Array.isArray(localVars)) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-        arrayVars.push(...localVars);
-      } else {
-        Object.assign(namedVars, localVars);
       }
     }
 
