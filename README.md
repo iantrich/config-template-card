@@ -82,8 +82,8 @@ card:
       icon: "${GARAGE_STATE === 'open' ? 'mdi:hotel' : '' }"
 ```
 
-### Templated entities example
-
+### Templated entities examples
+Each entry of `entities` is a template:
 ```yaml
 type: 'custom:config-template-card'
 variables:
@@ -94,6 +94,60 @@ card:
   type: light
   entity: '${vars[0].entity_id}'
   name: "${vars[0].state === 'on' ? 'Light On' : 'Light Off'}"
+```
+Whole `entities` array defined as a template:
+```yaml
+type: custom:config-template-card
+variables:
+  ENTITIES: >- #filtering out a particular domain
+    Object.keys(states).filter(
+      k => k.startsWith('light')
+    )
+entities: &ref_entities ${ENTITIES}
+card:
+  type: entities
+  entities: *ref_entities
+```
+```yaml
+type: custom:config-template-card
+variables:
+  ENTITIES: >- #filtering out partial matches
+    Object.keys(states).filter(
+      k => (
+        k.search('input_boolean.test_boolea*') != -1
+      )
+    )
+entities: &ref_entities ${ENTITIES}
+card:
+  type: entities
+  entities: *ref_entities
+```
+Concatenating entities:
+```yaml
+type: custom:config-template-card
+variables:
+  ENTITIES_1: >-
+    Object.keys(states).filter(
+      k => (
+        k.search('input_boolean.test_boolea*') != -1
+      )
+    )
+  ENTITIES_2: >-
+    Object.keys(states).filter(
+      k => (
+        k.search('input_number.test_number*') != -1
+      )
+    )
+entities: &ref_entities >-
+  ${
+    ENTITIES_1.concat(
+      ENTITIES_2,
+      Array('input_select.test_select')
+    )
+  }
+card:
+  type: entities
+  entities: *ref_entities
 ```
 
 ### Picture-elements card example
