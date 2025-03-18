@@ -158,6 +158,47 @@ variables:
       # {{ states('sensor.time') }}
 ```
 
+### `config` example
+
+```yaml
+type: custom:config-template-card
+entities:
+  - sun.sun
+card:
+  type: history-graph
+  title: >-
+    ${
+      Number(config.card.hours_to_show) >= 24
+        ? 'day or more'
+        : 'less than a day'
+    }
+  entities:
+    - entity: sun.sun
+  hours_to_show: 4
+```
+
+### `output` example
+
+```yaml
+type: custom:config-template-card
+variables:
+  ENTITIES: |-
+    Object.keys(states)
+      .filter(
+        k => (
+          k.search('sensor.battery*') != -1
+        )
+      )
+entities: ${ENTITIES}
+card:
+  type: entities
+  entities: ${ENTITIES}
+  title: >-
+    total: ${output.entities.length}
+```
+
+
+
 ## Defining global functions in variables
 
 If you find yourself having to rewrite the same logic in multiple locations, you can define global methods inside Config Template Card's variables, which can be called anywhere within the scope of the card:
