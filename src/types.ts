@@ -2,24 +2,35 @@ import { LovelaceCardConfig, EntitiesCardEntityConfig, LovelaceElementConfigBase
 import { HomeAssistant, CurrentUser } from 'custom-card-helpers';
 import { HassEntities } from 'home-assistant-js-websocket';
 
-interface StyleMixin {
-  style?: Record<string, string>;
-}
+export type ObjMap = Record<string, any>;
+export type Vars = ObjMap | any[];
 
-export interface ConfigTemplateConfig {
+export interface Config {
   type: string;
   entities?: string[];
-  variables?: Record<string, any> | any[];
-  card?: LovelaceCardConfig & StyleMixin;
-  row?: EntitiesCardEntityConfig & StyleMixin;
-  element?: LovelaceElementConfigBase & StyleMixin;
+  variables?: Vars;
+  staticVariables?: Vars;
+  card?: LovelaceCardConfig;
+  row?: EntitiesCardEntityConfig;
+  element?: LovelaceElementConfigBase;
   style?: Record<string, string>;
 }
 
-export interface ConfigTemplateVars {
-  hass?: HomeAssistant;
-  states?: HassEntities;
-  user?: CurrentUser;
-  vars: Record<string, any> & any[];
-  _evalInit: string;
+export interface SVarMgr {
+  svars: Vars;
+  _evalInitSVars: string;
+  _svarsPromise?: Promise<any>;
+}
+
+export interface VarMgr {
+  hass: HomeAssistant;
+  states: HassEntities;
+  user: CurrentUser;
+  config: Config;
+  svars: Vars;
+  _evalInitSVars: string;
+  vars?: Vars;
+  _evalInitVars: string;
+  _varsPromise?: Promise<any>;
+  output?: ObjMap;
 }

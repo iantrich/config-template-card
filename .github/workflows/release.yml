@@ -7,7 +7,7 @@ on:
 
 jobs:
   release:
-    name: Prepare Release
+    name: Release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,12 +17,12 @@ jobs:
           npm install
           npm run build
 
-      - name: Upload as Release
+      - name: Upload to Release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: dist/config-template-card.js
-          asset_name: config-template-card.js
           tag: ${{ github.ref }}
           prerelease: ${{ contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          file: dist/config-template-card.js
+          asset_name: config-template-card.js
           overwrite: true

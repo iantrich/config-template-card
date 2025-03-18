@@ -4,7 +4,7 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "lib": [
-      "es2017",
+      "es2019",
       "dom",
       "dom.iterable"
     ],

@@ -2,11 +2,7 @@ name: Build
 
 on:
   push:
-    branches:
-      - master
   pull_request:
-    branches:
-      - master
 
 jobs:
   build:
@@ -20,9 +16,9 @@ jobs:
           npm install
           npm run build
 
-      - name: Archive distribution bundle
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           path: dist/config-template-card.js
-          name: config-template-card-latest-build.js
+          name: config-template-card.js
           overwrite: true
