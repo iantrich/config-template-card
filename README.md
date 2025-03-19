@@ -44,10 +44,46 @@ resources:
 | type      | string | **Required** | `custom:config-template-card`                                                                                    |
 | entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here                            |
 | variables | list   | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars` or by name |
-| card      | object | **Optional** | Card configuration. (A card, row, or element configuaration must be provided)                                    |
-| row       | object | **Optional** | Row configuration. (A card, row, or element configuaration must be provided)                                     |
-| element   | object | **Optional** | Element configuration. (A card, row, or element configuaration must be provided)                                 |
-| style     | object | **Optional** | Style configuration.                                                                                             |
+| card      | object | **Optional**\* | Card configuration                                    |
+| row       | object | **Optional**\* | Row configuration for Entities card                                    |
+| element   | object | **Optional**\* | Element configuration for Picture elements card or Badge                                 |
+| style     | object | **Optional** | Style configuration                                                                                             |
+
+\* At least one option (`card`, `row`, or `element`) must be provided.
+
+\** An update occurs in following cases: a config of `config-template-card` or an inner card (row, element) is changed by a user,  any entity listed in `entities` option is updated.
+
+### Defining `variables` & `staticVariables`
+
+Both options may be defined as a list:
+```yaml
+variables:
+  - ...
+  - ...
+  - ...
+```
+or an object (yaml dictionary):
+```yaml
+variables:
+  ABC: ...
+  DEF: ...
+  GHI: ...
+```
+In both cases any variable may reference another variable which was defined before:
+```yaml
+variables:
+  - ...
+  - ... may refer to vars[0]
+  - ... may rever to vars[0] & vars[1]
+```
+```yaml
+variables:
+  ABC: ...
+  DEF: ... may refer to vars['ABC']
+  GHI: ... may refer to vars['ABC'] & vars['DEF']
+```
+Check [this chapter](#available-variables-for-templating) for more information about `vars` & `svars` variables.
+
 
 ### Available variables for templating
 
@@ -56,11 +92,11 @@ resources:
 | `hass`      | The [hass](https://developers.home-assistant.io/docs/frontend/data/) object                                                                                                                                                                                                                                                                                                                           |
 | `states`    | The [states](https://developers.home-assistant.io/docs/frontend/data/#hassstates) object                                                                                                                                                                                                                                                                                                              |
 | `user`      | The [user](https://developers.home-assistant.io/docs/frontend/data/#hassuser) object                                                                                                                                                                                                                                                                                                                  |
-| `vars`      | Defined by `variables` configuration and accessible in your templates to help clean them up. If `variables` in the configuration is a yaml list, then `vars` is an array starting at the 0th index as your firstly defined variable. If `variables` is an object in the configuration, then `vars` is a string-indexed map and you can also access the variables by name without using `vars` at all. |
+| `vars`      | Defined by `variables` configuration and accessible in your templates to help clean them up. If `variables` in the configuration is a yaml list, then `vars` is an array starting at the 0th index as your firstly defined variable. If `variables` is an object in the configuration, then `vars` is a string-indexed map and you can also access the variables by name without using `vars` at all |
 ## Examples
 
 ```yaml
-type: 'custom:config-template-card'
+type: custom:config-template-card
 variables:
   LIGHT_STATE: states['light.bed_light'].state
   GARAGE_STATE: states['cover.garage_door'].state
@@ -85,7 +121,7 @@ card:
 ### Templated entities example
 
 ```yaml
-type: 'custom:config-template-card'
+type: custom:config-template-card
 variables:
   - states['light.kitchen']
 entities:
@@ -102,7 +138,7 @@ card:
 type: picture-elements
 image: http://hs.sbcounty.gov/CN/Photo%20Gallery/_t/Sample%20Picture%20-%20Koala_jpg.jpg?Mobile=0
 elements:
-  - type: 'custom:config-template-card'
+  - type: custom:config-template-card
     variables:
       - states['light.bed_light'].state
     entities:
@@ -119,12 +155,14 @@ elements:
 ```
 The `style` object on the element configuration is applied to the element itself, the `style` object on the `config-template-card` is applied to the surrounding card, both can contain templated values. For example, in order to place the card properly, the `top` and `left` attributes must always be configured on the `config-template-card`.
 
+**Note**: it is recommended to use `config-template-card` for a particular element(s), not a whole Picture elements card ([see also](#where-config-template-card-may-not-be-used)).
+
 ### Entities card example
 
 ```yaml
 type: entities
 entities:
-  - type: 'custom:config-template-card'
+  - type: custom:config-template-card
     variables:
       - states['light.bed_light'].state
     entities:
@@ -133,6 +171,22 @@ entities:
       type: section
       label: "${vars[0] === 'on' ? 'Light On' : 'Light Off'}"
   - entity: light.bed_light
+```
+
+### Badge example
+
+```yaml
+badges:
+  - type: custom:config-template-card
+    variables:
+      VAR: states['sun.sun'].state
+    entities:
+      - sun.sun
+    element:
+      type: custom:hui-entity-badge
+      entity: sun.sun
+      show_name: true
+      name: ${VAR}
 ```
 
 ### Markdown card example
@@ -163,7 +217,7 @@ variables:
 If you find yourself having to rewrite the same logic in multiple locations, you can define global methods inside Config Template Card's variables, which can be called anywhere within the scope of the card:
 
 ```yaml
-type: 'custom:config-template-card'
+type: custom:config-template-card
   variables:
     setTempMessage: |
       (prefix, temp) => {
@@ -201,6 +255,89 @@ views:
 Both arrays and objects are supported, just like in card's local variables. It is allowed to mix the two types, i.e. use an array in dashboard variables and an object in card variables, or the other way around. If both definitions are arrays, then dashboard variables are put first in `vars`. In the mixed mode, `vars` have array indices and as well as variable names.
 
 ### Note: All templates must be enclosed by `${}`
+
+## Where `config-template-card` may NOT be used
+
+1. Avoid using `config-template-card` on an "upper" level in stack-like cards:
+```yaml
+type: custom:config-template-card
+variables: ...
+entities: ...
+card:
+  type: vertical-stack
+  cards:
+    - type: entities
+      ... using variables
+    - type: entities
+      ... NOT using variables
+    - type: entities
+      ... NOT using variables
+```
+if `config-template-card` is used for some particular card(s) inside a stack.
+
+Instead, use `config-template-card` for a particular inner card (the lower level - the better):
+```yaml
+type: vertical-stack
+cards:
+  - type: custom:config-template-card
+    variables: ...
+    entities: ...
+    card:
+      type: entities
+      ... using variables
+  - type: entities
+    ... NOT using variables
+  - type: entities
+    ... NOT using variables
+```
+2. If `config-template-card` is only used to dynamically change CSS properties - this can be implemented by card-mod instead.
+
+Consider this example:
+```yaml
+type: picture-elements
+...
+elements:
+  - type: custom:config-template-card
+    variables: ...
+    entities: ...
+    element:
+      type: icon
+      icon: ...
+      style:
+        '--paper-item-icon-color': ${ ... some template ... }
+    style: ...
+  - type: custom:config-template-card
+    variables: ...
+    entities: ...
+    element:
+      type: icon
+      icon: ...
+      style:
+        '--paper-item-icon-color': ${ ... some SAME template ... }
+    style: ...
+```
+Instead, card-mod may be used:
+```yaml
+type: picture-elements
+...
+card_mod:
+  style: |
+    ha-card {
+      --my-icon-color: {{ ... define jinja template here ... }}
+    }
+elements:
+  - type: icon
+    icon: ...
+    style:
+      '--paper-item-icon-color': var(--my-icon-color)
+      ...
+  - type: icon
+    icon: ...
+    style:
+      '--paper-item-icon-color': var(--my-icon-color)
+      ...
+```
+
 
 [Troubleshooting](https://github.com/thomasloven/hass-config/wiki/Lovelace-Plugins)
 
