@@ -148,14 +148,14 @@ variables:
     () => {
         let hass = document.querySelector("home-assistant").hass;
         let w = states['weather.home'].state;
-        let key = 'component.weather.state._.' + w;
+        let key = 'component.weather.entity_component._.state.' + w;
         return hass.resources[hass.language][key];
       }
-  card:
-    type: markdown
-    content: |
-      ### {{ states('sensor.outside_temperature') }} °C - ${weather()}
-      # {{ states('sensor.time') }}
+card:
+  type: markdown
+  content: |
+    ### {{ states('sensor.outside_temperature') }} °C - ${weather()}
+    # {{ states('sensor.time') }}
 ```
 
 ## Defining global functions in variables
