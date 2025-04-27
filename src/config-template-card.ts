@@ -163,7 +163,7 @@ export class ConfigTemplateCard extends LitElement {
       }
     }
 
-    return html`<div id="card">${element}</div>`;
+    return html`<div id="card" style="height: 100%;">${element}</div>`;
   }
 
   private _initialize(): void {
