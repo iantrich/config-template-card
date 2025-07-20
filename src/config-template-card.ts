@@ -224,22 +224,22 @@ export class ConfigTemplateCard extends LitElement {
     cv._evalInit += "var user = this._curVars.user;\n";
     cv._evalInit += "var vars = this._curVars.vars;\n";
 
+    const dashboardVars = this.getLovelaceConfig();
+    if (dashboardVars) {
+      if (Array.isArray(dashboardVars)) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        arrayVars.push(...dashboardVars);
+      } else {
+        Object.assign(namedVars, dashboardVars);
+      }
+    }
+
     if (this._config?.variables) {
       if (Array.isArray(this._config.variables)) {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         arrayVars.push(...this._config.variables);
       } else {
         Object.assign(namedVars, this._config.variables);
-      }
-    }
-
-    const localVars = this.getLovelaceConfig();
-    if (localVars) {
-      if (Array.isArray(localVars)) {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-        arrayVars.push(...localVars);
-      } else {
-        Object.assign(namedVars, localVars);
       }
     }
 
@@ -251,7 +251,13 @@ export class ConfigTemplateCard extends LitElement {
 
     for (const varName in namedVars) {
       let v = namedVars[varName];
-      if (isString(v)) { v = this._evalWithVars(v); }
+      if (isString(v)) { 
+         try { 
+           v = this._evalWithVars(v);
+         } catch { 
+           console.error('config-template-card - Failed _evalWithVars! *** varName: ' + varName + ' | namedVars[varName]: ' + namedVars[varName] + ' | v: ' + v); 
+         }  
+      }
       else { v = structuredClone(v); }
       vars[varName] = v;
       cv._evalInit += `var ${varName} = vars['${varName}'];\n`;
