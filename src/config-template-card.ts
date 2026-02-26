@@ -126,7 +126,6 @@ export class ConfigTemplateCard extends LitElement {
           const oldEntityId = String(this._evaluateTemplate(entityTemplate, oldHass));
 
           if (oldEntityId !== currentEntityId) {
-            console.info('Evaluated entity id changed:', oldEntityId, currentEntityId);
             return true;
           }
 
@@ -134,7 +133,6 @@ export class ConfigTemplateCard extends LitElement {
           const currentState = this.hass.states[currentEntityId];
 
           if (oldState !== currentState) {
-            console.info('Entity state changed:', currentEntityId);
             return true;
           }
 
@@ -145,7 +143,6 @@ export class ConfigTemplateCard extends LitElement {
               oldState.last_changed !== currentState.last_changed ||
               oldState.last_updated !== currentState.last_updated)
           ) {
-            console.info('Entity state payload changed:', currentEntityId);
             return true;
           }
         }
