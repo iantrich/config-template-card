@@ -102,12 +102,10 @@ yarn install
 - **Build Tool**: Rollup 4.20
 - **Linter**: ESLint 9 + TypeScript Support
 - **Code Formatter**: Prettier 3.8
-- **Web Framework**: Lit 3.2
+- **Web Framework**: Lit 3.3
 - **Home Assistant Image**: Latest (optional)
 
 ## Notes
 
-- The container runs as non-root user `nodejs` for security
-- Volume mounts use `cached` consistency mode for better performance on Mac/Windows
 - All Yarn commands run inside the container automatically
 - VS Code extensions are configured for TypeScript and YAML development

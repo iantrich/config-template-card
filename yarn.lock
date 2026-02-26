@@ -720,66 +720,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@lit-labs/context@npm:0.4.1":
-  version: 0.4.1
-  resolution: "@lit-labs/context@npm:0.4.1"
-  dependencies:
-    "@lit/reactive-element": "npm:^1.5.0"
-    lit: "npm:^2.7.0"
-  checksum: 10c0/06944ff69702c86074123909b256f30a33a919bd3520cbf5724b86cac3fda2283d069276f80b18428381c36129ad91651bf8485e886b32bfef6611dc5186ff22
-  languageName: node
-  linkType: hard
-
-"@lit-labs/motion@npm:1.0.7":
-  version: 1.0.7
-  resolution: "@lit-labs/motion@npm:1.0.7"
-  dependencies:
-    lit: "npm:^3.1.2"
-  checksum: 10c0/0b2f68227d5f55a98e5924ecf003238b87e270276d8b996f7b6094cdd505b14099d75a030c6365cf5abb206a813636e5fd065a698140e0f094ead2f578ed3bef
-  languageName: node
-  linkType: hard
-
-"@lit-labs/observers@npm:2.0.2":
-  version: 2.0.2
-  resolution: "@lit-labs/observers@npm:2.0.2"
-  dependencies:
-    "@lit/reactive-element": "npm:^1.0.0 || ^2.0.0"
-  checksum: 10c0/77099b1596bf053a3378abbd9ab0e0edb2ab2602de9aa86ed8e7238ea64803cc9c5c8fdd61f100d06ae11a187dbd5b8df4dafec7cbbd4066e4f6afb335a7c816
-  languageName: node
-  linkType: hard
-
-"@lit-labs/ssr-dom-shim@npm:^1.0.0, @lit-labs/ssr-dom-shim@npm:^1.1.0, @lit-labs/ssr-dom-shim@npm:^1.5.0":
+"@lit-labs/ssr-dom-shim@npm:^1.5.0":
   version: 1.5.1
   resolution: "@lit-labs/ssr-dom-shim@npm:1.5.1"
   checksum: 10c0/2b10a42db0af33a4db32b3aa34db0f546aaa6794acdfc173499e999b4423102a1c9d15687679c674f07fa799cf740b5f5641c2ca6eee5d4af30c762a1e3b8c4f
   languageName: node
   linkType: hard
 
-"@lit-labs/virtualizer@npm:2.0.12":
-  version: 2.0.12
-  resolution: "@lit-labs/virtualizer@npm:2.0.12"
-  dependencies:
-    lit: "npm:^3.1.0"
-    tslib: "npm:^2.0.3"
-  checksum: 10c0/f554454ff452ffdfdf646ef91fcb4124ff8f170a0064f021753684ba1afc72fbacae88744be5d932bcc62e5de2945e2f82f4609af11ab7a2381be0eec150c461
-  languageName: node
-  linkType: hard
-
-"@lit/reactive-element@npm:^1.0.0 || ^2.0.0, @lit/reactive-element@npm:^2.1.0":
+"@lit/reactive-element@npm:^2.1.0":
   version: 2.1.2
   resolution: "@lit/reactive-element@npm:2.1.2"
   dependencies:
     "@lit-labs/ssr-dom-shim": "npm:^1.5.0"
   checksum: 10c0/557069ce6ebbbafb1140e1e0a25ce73d3501bf455cda231d42bb131baa9065c54b6b7ca1655507eede397decd7ddde16c84192cb72a07d4edf41d54e07725933
-  languageName: node
-  linkType: hard
-
-"@lit/reactive-element@npm:^1.3.0, @lit/reactive-element@npm:^1.5.0, @lit/reactive-element@npm:^1.6.0":
-  version: 1.6.3
-  resolution: "@lit/reactive-element@npm:1.6.3"
-  dependencies:
-    "@lit-labs/ssr-dom-shim": "npm:^1.0.0"
-  checksum: 10c0/10f1d25e24e32feb21c4c6f9e11d062901241602e12c4ecf746b3138f87fed4d8394194645514d5c1bfd5f33f3fd56ee8ef41344e2cb4413c40fe4961ec9d419
   languageName: node
   linkType: hard
 
@@ -905,7 +858,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/pluginutils@npm:5, @rollup/pluginutils@npm:^5.0.1, @rollup/pluginutils@npm:^5.1.0":
+"@rollup/pluginutils@npm:^5.0.1, @rollup/pluginutils@npm:^5.1.0":
   version: 5.3.0
   resolution: "@rollup/pluginutils@npm:5.3.0"
   dependencies:
@@ -1768,10 +1721,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "config-template-card@workspace:."
   dependencies:
-    "@lit-labs/context": "npm:0.4.1"
-    "@lit-labs/motion": "npm:1.0.7"
-    "@lit-labs/observers": "npm:2.0.2"
-    "@lit-labs/virtualizer": "npm:2.0.12"
     "@rollup/plugin-commonjs": "npm:^26.0.0"
     "@rollup/plugin-json": "npm:^6.1.0"
     "@rollup/plugin-node-resolve": "npm:^15.2.0"
@@ -1791,7 +1740,6 @@ __metadata:
     lit: "npm:^3.3.2"
     prettier: "npm:^3.8.1"
     rollup: "npm:^4.20.0"
-    rollup-plugin-css-only: "npm:^4.5.5"
     rollup-plugin-esbuild: "npm:^6.2.1"
     rollup-plugin-serve: "npm:^1.1.1"
     tslib: "npm:^2.6.0"
@@ -3384,17 +3332,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lit-element@npm:^3.3.0":
-  version: 3.3.3
-  resolution: "lit-element@npm:3.3.3"
-  dependencies:
-    "@lit-labs/ssr-dom-shim": "npm:^1.1.0"
-    "@lit/reactive-element": "npm:^1.3.0"
-    lit-html: "npm:^2.8.0"
-  checksum: 10c0/f44c12fa3423a4e9ca5b84651410687e14646bb270ac258325e6905affac64a575f041f8440377e7ebaefa3910b6f0d6b8b1e902cb1aa5d0849b3fdfbf4fb3b6
-  languageName: node
-  linkType: hard
-
 "lit-element@npm:^4.2.0":
   version: 4.2.2
   resolution: "lit-element@npm:4.2.2"
@@ -3403,15 +3340,6 @@ __metadata:
     "@lit/reactive-element": "npm:^2.1.0"
     lit-html: "npm:^3.3.0"
   checksum: 10c0/114ab5837f1f9e03a30b1ed1c055fa0e31f01e444464e5ab0453ef88be12d778508235533267c42614d323e3048ee58f865b5c612948a53bd6219abca404c710
-  languageName: node
-  linkType: hard
-
-"lit-html@npm:^2.8.0":
-  version: 2.8.0
-  resolution: "lit-html@npm:2.8.0"
-  dependencies:
-    "@types/trusted-types": "npm:^2.0.2"
-  checksum: 10c0/90057dee050803823ac884c1355b0213ab8c05fbe2ec63943c694b61aade5d36272068f3925f45a312835e504f9c9784738ef797009f0a756a750351eafb52d5
   languageName: node
   linkType: hard
 
@@ -3424,18 +3352,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lit@npm:^2.7.0":
-  version: 2.8.0
-  resolution: "lit@npm:2.8.0"
-  dependencies:
-    "@lit/reactive-element": "npm:^1.6.0"
-    lit-element: "npm:^3.3.0"
-    lit-html: "npm:^2.8.0"
-  checksum: 10c0/bf33c26b1937ee204aed1adbfa4b3d43a284e85aad8ea9763c7865365917426eded4e5888158b4136095ea42054812561fe272862b61775f1198fad3588b071f
-  languageName: node
-  linkType: hard
-
-"lit@npm:^3.1.0, lit@npm:^3.1.2, lit@npm:^3.3.2":
+"lit@npm:^3.3.2":
   version: 3.3.2
   resolution: "lit@npm:3.3.2"
   dependencies:
@@ -4070,17 +3987,6 @@ __metadata:
   version: 0.13.1
   resolution: "retry@npm:0.13.1"
   checksum: 10c0/9ae822ee19db2163497e074ea919780b1efa00431d197c7afdb950e42bf109196774b92a49fc9821f0b8b328a98eea6017410bfc5e8a0fc19c85c6d11adb3772
-  languageName: node
-  linkType: hard
-
-"rollup-plugin-css-only@npm:^4.5.5":
-  version: 4.5.5
-  resolution: "rollup-plugin-css-only@npm:4.5.5"
-  dependencies:
-    "@rollup/pluginutils": "npm:5"
-  peerDependencies:
-    rollup: <5
-  checksum: 10c0/02a883e231f5520b900360c4b3624d0b329f9f487e232a76592db41e998b7aad590b5417589eb353cbddf4b199a99c2b3f59624405bed5deac9040cb9060851e
   languageName: node
   linkType: hard
 
@@ -4736,7 +4642,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tslib@npm:^2.0.3, tslib@npm:^2.6.0, tslib@npm:^2.8.1":
+"tslib@npm:^2.6.0, tslib@npm:^2.8.1":
   version: 2.8.1
   resolution: "tslib@npm:2.8.1"
   checksum: 10c0/9c4759110a19c53f992d9aae23aac5ced636e99887b51b9e61def52611732872ff7668757d4e4c61f19691e36f4da981cd9485e869b4a7408d689f6bf1f14e62

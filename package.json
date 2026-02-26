@@ -17,10 +17,6 @@
   "author": "Ian Richardson <iantrich@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "@lit-labs/context": "0.4.1",
-    "@lit-labs/motion": "1.0.7",
-    "@lit-labs/observers": "2.0.2",
-    "@lit-labs/virtualizer": "2.0.12",
     "custom-card-helpers": "2.0.0",
     "home-assistant-js-websocket": "9.6.0",
     "lit": "^3.3.2"
@@ -42,7 +38,6 @@
     "jsdom": "^28.1.0",
     "prettier": "^3.8.1",
     "rollup": "^4.20.0",
-    "rollup-plugin-css-only": "^4.5.5",
     "rollup-plugin-esbuild": "^6.2.1",
     "rollup-plugin-serve": "^1.1.1",
     "tslib": "^2.6.0",
