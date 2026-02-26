@@ -82,6 +82,27 @@ describe('ConfigTemplateCard logic', () => {
     expect(value).toBe('Light On');
   });
 
+  it('_evaluateTemplate works when _config.variables is undefined', () => {
+    card.hass = {
+      states: {
+        'light.kitchen': { state: 'on' },
+      },
+    } as never;
+
+    (card as unknown as { _config: unknown })._config = {
+      ...baseConfig,
+      variables: undefined,
+    };
+
+    const value = (
+      card as unknown as {
+        _evaluateTemplate: (template: string) => unknown;
+      }
+    )._evaluateTemplate("${states['light.kitchen'].state}");
+
+    expect(value).toBe('on');
+  });
+
   it('_evaluateConfig recursively evaluates template strings', () => {
     card.hass = {
       user: { name: 'Dev' },

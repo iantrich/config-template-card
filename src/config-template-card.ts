@@ -338,10 +338,11 @@ export class ConfigTemplateCard extends LitElement {
     }
 
     if (this._config) {
-      if (Array.isArray(this._config.variables)) {
-        arrayVars.push(...this._config.variables);
-      } else {
-        Object.assign(namedVars, this._config.variables);
+      const configVars = this._config.variables;
+      if (Array.isArray(configVars)) {
+        arrayVars.push(...configVars);
+      } else if (configVars) {
+        Object.assign(namedVars, configVars);
       }
     }
 
