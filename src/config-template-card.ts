@@ -1,5 +1,5 @@
 import { LitElement, html, type TemplateResult, type PropertyValues } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { computeCardSize } from 'custom-card-helpers';
 import type { HomeAssistant, LovelaceCard } from 'custom-card-helpers';
 
@@ -34,9 +34,11 @@ export class ConfigTemplateCard extends LitElement {
   private static readonly _HELPERS_TIMEOUT_MS = 10000;
   private _hass?: HomeAssistant;
 
+  @property({ attribute: false })
   public set hass(value: HomeAssistant | undefined) {
+    const oldValue = this._hass;
     this._hass = value;
-    this.requestUpdate();
+    this.requestUpdate('hass', oldValue);
   }
 
   public get hass(): HomeAssistant | undefined {
