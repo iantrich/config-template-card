@@ -21,12 +21,6 @@ This card is for [Lovelace](https://www.home-assistant.io/lovelace) on [Home Ass
 
 Home Assistant version 0.110.0 or higher is required as of release 1.2.0 of config-template-card
 
-## Support
-
-Hey dude! Help me out for a couple of :beers: or a :coffee:!
-
-[![coffee](https://www.buymeacoffee.com/assets/img/custom_images/black_img.png)](https://www.buymeacoffee.com/zJtVxUAgH)
-
 ## Installation
 
 Use [HACS](https://hacs.xyz) or follow this [guide](https://github.com/thomasloven/hass-config/wiki/Lovelace-Plugins)
@@ -82,6 +76,14 @@ card:
       icon: "${GARAGE_STATE === 'open' ? 'mdi:hotel' : '' }"
 ```
 
+What this example does:
+
+- Uses `variables` as named values (`LIGHT_STATE`, `GARAGE_STATE`) so templates are easier to read.
+- Uses `entities` as the watch list; when any listed entity changes, the card re-evaluates templates.
+- Uses `card` as the render target, and even templates the `card.type` itself (`glance` vs `entities`).
+- Templates specific row properties (`name`, `entity`, `icon`) so content changes live based on state.
+- Demonstrates that nearly any string field inside the target card config can be templated.
+
 ### Templated entities example
 
 ```yaml
@@ -96,11 +98,18 @@ card:
   name: "${vars[0].state === 'on' ? 'Light On' : 'Light Off'}"
 ```
 
+What this example does:
+
+- Uses `variables` in array mode, so values are referenced by index (`vars[0]`).
+- Uses a templated item in `entities`, meaning the watched entity itself is dynamic.
+- Renders a `card` target (`light` card) whose `entity` and `name` come from templates.
+- Shows a common pattern where one sensor (or helper) points to the active entity to display.
+
 ### Picture-elements card example
 
 ```yaml
 type: picture-elements
-image: http://hs.sbcounty.gov/CN/Photo%20Gallery/_t/Sample%20Picture%20-%20Koala_jpg.jpg?Mobile=0
+image: https://upload.wikimedia.org/wikipedia/commons/4/49/Koala_climbing_tree.jpg
 elements:
   - type: 'custom:config-template-card'
     variables:
@@ -117,7 +126,16 @@ elements:
       top: 47%
       left: 75%
 ```
-The `style` object on the element configuration is applied to the element itself, the `style` object on the `config-template-card` is applied to the surrounding card, both can contain templated values. For example, in order to place the card properly, the `top` and `left` attributes must always be configured on the `config-template-card`.
+
+What this example does:
+
+- Embeds `custom:config-template-card` inside a native `picture-elements` card.
+- Uses `element` (not `card`/`row`) as the render target, because picture-elements expects elements.
+- Uses wrapper-level `style` (`top`, `left`) to position the template card in the image canvas.
+- Uses `element.style` to style the inner rendered element (icon color), independent of wrapper placement.
+- Uses `entities` to watch both the light state and color source sensor for live icon updates.
+
+Note: The `style` object on the element configuration is applied to the element itself, the `style` object on the `config-template-card` is applied to the surrounding card, both can contain templated values. For example, in order to place the card properly, the `top` and `left` attributes must always be configured on the `config-template-card`.
 
 ### Entities card example
 
@@ -134,6 +152,13 @@ entities:
       label: "${vars[0] === 'on' ? 'Light On' : 'Light Off'}"
   - entity: light.bed_light
 ```
+
+What this example does:
+
+- Embeds `custom:config-template-card` as an item inside a native `entities` card list.
+- Uses `row` as the render target, which is the correct mode for rows inside entities cards.
+- Uses one watched entity and one array variable to keep logic minimal.
+- Dynamically changes the section label so the row text reflects live entity state.
 
 ## Defining global functions in variables
 
@@ -162,6 +187,13 @@ type: 'custom:config-template-card'
         name: '${ setTempMessage(currentTemp) }'
 ````
 
+What this example does:
+
+- Uses object-style `variables` to define both a reusable function (`setTempMessage`) and data (`currentTemp`).
+- Demonstrates that templates can call custom functions, not just simple expressions.
+- Uses `entities` to watch only what the template depends on (`climate.ecobee`).
+- Keeps card config clean by moving conditional text logic into a reusable variable function.
+
 ## Dashboard wide variables
 
 If you need to use the same variable in multiple cards, then instead of defining it in each card's `variables` you can do that once for the entire dashboard.
@@ -175,6 +207,13 @@ config_template_card_vars:
 views:
 ```
 
+What this example does:
+
+- Defines `config_template_card_vars` at dashboard root so many cards can reuse shared variables.
+- Avoids repeating identical variable expressions in every individual card config.
+- Supports both array and object forms, same as local `variables`.
+- When both dashboard and local variables are arrays, dashboard entries come first in `vars`.
+
 Both arrays and objects are supported, just like in card's local variables. It is allowed to mix the two types, i.e. use an array in dashboard variables and an object in card variables, or the other way around. If both definitions are arrays, then dashboard variables are put first in `vars`. In the mixed mode, `vars` have array indices and as well as variable names.
 
 ### Note: All templates must be enclosed by `${}`
@@ -185,7 +224,7 @@ Both arrays and objects are supported, just like in card's local variables. It i
 
 Fork and then clone the repo to your local machine. From the cloned directory run
 
-`npm install && npm run build`
+`yarn install && yarn build`
 
 [commits-shield]: https://img.shields.io/github/commit-activity/y/custom-cards/config-template-card.svg?style=for-the-badge
 [commits]: https://github.com/custom-cards/config-template-card/commits/master

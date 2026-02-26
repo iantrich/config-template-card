@@ -1,9 +1,26 @@
-import { LitElement, html, customElement, property, TemplateResult, PropertyValues, state } from 'lit-element';
-import deepClone from 'deep-clone-simple';
-import { computeCardSize, HomeAssistant, LovelaceCard } from 'custom-card-helpers';
+import { LitElement, html, type TemplateResult, type PropertyValues } from 'lit';
+import { customElement, state } from 'lit/decorators.js';
+import { computeCardSize } from 'custom-card-helpers';
+import type { HomeAssistant, LovelaceCard } from 'custom-card-helpers';
 
-import { ConfigTemplateConfig } from './types';
+import type {
+  CardHelpers,
+  ConfigObject,
+  ConfigTemplateConfig,
+  EvalVars,
+  LovelacePanelWithVars,
+  TemplateVars,
+  WindowWithCardHelpers,
+} from './types';
 import { CARD_VERSION } from './const';
+
+const clone = <T>(value: T): T => {
+  if (typeof globalThis.structuredClone === 'function') {
+    return globalThis.structuredClone(value);
+  }
+
+  return JSON.parse(JSON.stringify(value)) as T;
+};
 
 /* eslint no-console: 0 */
 console.info(
@@ -14,9 +31,20 @@ console.info(
 
 @customElement('config-template-card')
 export class ConfigTemplateCard extends LitElement {
-  @property({ attribute: false }) public hass?: HomeAssistant;
+  private static readonly _HELPERS_TIMEOUT_MS = 10000;
+  private _hass?: HomeAssistant;
+
+  public set hass(value: HomeAssistant | undefined) {
+    this._hass = value;
+    this.requestUpdate();
+  }
+
+  public get hass(): HomeAssistant | undefined {
+    return this._hass;
+  }
+
   @state() private _config?: ConfigTemplateConfig;
-  @state() private _helpers?: any;
+  @state() private _helpers?: CardHelpers;
   private _initialized = false;
 
   public setConfig(config: ConfigTemplateConfig): void {
@@ -52,27 +80,32 @@ export class ConfigTemplateCard extends LitElement {
   }
 
   private getLovelacePanel() {
-    const ha = document.querySelector("home-assistant");
+    const ha = document.querySelector('home-assistant');
 
     if (ha && ha.shadowRoot) {
-      const haMain = ha.shadowRoot.querySelector("home-assistant-main");
+      const haMain = ha.shadowRoot.querySelector('home-assistant-main');
 
       if (haMain && haMain.shadowRoot) {
         return haMain.shadowRoot.querySelector('ha-panel-lovelace');
       }
     }
 
-    return null
+    return null;
   }
 
-  private getLovelaceConfig() {
-    const panel = this.getLovelacePanel() as any;
+  private getLovelaceConfig(): TemplateVars | undefined {
+    const panel = this.getLovelacePanel() as LovelacePanelWithVars | null;
+    const localVars = panel?.lovelace?.config?.config_template_card_vars;
 
-    if (panel && panel.lovelace && panel.lovelace.config && panel.lovelace.config.config_template_card_vars) {
-      return panel.lovelace.config.config_template_card_vars
+    if (Array.isArray(localVars)) {
+      return localVars as string[];
     }
 
-    return {}
+    if (localVars && typeof localVars === 'object') {
+      return localVars as { [key: string]: string };
+    }
+
+    return undefined;
   }
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
@@ -84,13 +117,35 @@ export class ConfigTemplateCard extends LitElement {
       return true;
     }
 
-    if (this._config) {
+    if (this._config && this.hass) {
       const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
 
       if (oldHass) {
-        for (const entity of this._config.entities) {
-          const evaluatedTemplate = this._evaluateTemplate(entity);
-          if (Boolean(this.hass && oldHass.states[evaluatedTemplate] !== this.hass.states[evaluatedTemplate])) {
+        for (const entityTemplate of this._config.entities) {
+          const currentEntityId = String(this._evaluateTemplate(entityTemplate));
+          const oldEntityId = String(this._evaluateTemplate(entityTemplate, oldHass));
+
+          if (oldEntityId !== currentEntityId) {
+            console.info('Evaluated entity id changed:', oldEntityId, currentEntityId);
+            return true;
+          }
+
+          const oldState = oldHass.states[oldEntityId];
+          const currentState = this.hass.states[currentEntityId];
+
+          if (oldState !== currentState) {
+            console.info('Entity state changed:', currentEntityId);
+            return true;
+          }
+
+          if (
+            oldState &&
+            currentState &&
+            (oldState.state !== currentState.state ||
+              oldState.last_changed !== currentState.last_changed ||
+              oldState.last_updated !== currentState.last_updated)
+          ) {
+            console.info('Entity state payload changed:', currentEntityId);
             return true;
           }
         }
@@ -105,7 +160,6 @@ export class ConfigTemplateCard extends LitElement {
     if (this.shadowRoot) {
       const element = this.shadowRoot.querySelector('#card > *') as LovelaceCard;
       if (element) {
-        console.log('computeCardSize is ' + computeCardSize(element));
         return computeCardSize(element);
       }
     }
@@ -123,44 +177,42 @@ export class ConfigTemplateCard extends LitElement {
       return html``;
     }
 
-    let config = this._config.card
-      ? deepClone(this._config.card)
-      : this._config.row
-      ? deepClone(this._config.row)
-      : deepClone(this._config.element);
+    const sourceConfig = this._config.card ?? this._config.row ?? this._config.element;
+    if (!sourceConfig) {
+      return html``;
+    }
 
-    let style = this._config.style ? deepClone(this._config.style) : {};
+    let config: ConfigObject = clone(sourceConfig as ConfigObject);
+    let style: ConfigObject = this._config.style ? clone(this._config.style as ConfigObject) : {};
 
     config = this._evaluateConfig(config);
     if (style) {
       style = this._evaluateConfig(style);
     }
+    const styleRecord = this._asStyleRecord(style);
 
     const element = this._config.card
       ? this._helpers.createCardElement(config)
       : this._config.row
-      ? this._helpers.createRowElement(config)
-      : this._helpers.createHuiElement(config);
+        ? this._helpers.createRowElement(config)
+        : this._helpers.createHuiElement(config);
     element.hass = this.hass;
 
     if (this._config.element) {
-      if (style) {
-        Object.keys(style).forEach(prop => {
-          this.style.setProperty(prop, style[prop]);
+      if (styleRecord) {
+        Object.keys(styleRecord).forEach((prop) => {
+          this.style.setProperty(prop, styleRecord[prop]);
         });
       }
-      if (config.style) {
-        Object.keys(config.style).forEach(prop => {
-          element.style.setProperty(prop, config.style[prop]);
+      const configStyle = this._asStyleRecord(config.style);
+      if (configStyle) {
+        Object.keys(configStyle).forEach((prop) => {
+          element.style.setProperty(prop, configStyle[prop]);
         });
       }
     }
 
-    return html`
-      <div id="card">
-        ${element}
-      </div>
-    `;
+    return html` <div id="card">${element}</div> `;
   }
 
   private _initialize(): void {
@@ -171,20 +223,63 @@ export class ConfigTemplateCard extends LitElement {
   }
 
   private async loadCardHelpers(): Promise<void> {
-    this._helpers = await (window as any).loadCardHelpers();
+    try {
+      const helpersFactory = await this._waitForCardHelpers(ConfigTemplateCard._HELPERS_TIMEOUT_MS);
+      this._helpers = await Promise.race<CardHelpers>([
+        helpersFactory(),
+        new Promise<CardHelpers>((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Timed out while resolving card helpers')),
+            ConfigTemplateCard._HELPERS_TIMEOUT_MS,
+          ),
+        ),
+      ]);
+      this.requestUpdate();
+    } catch (error) {
+      console.debug('Unable to load Home Assistant card helpers', error);
+    }
   }
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  private _evaluateConfig(config: any): any {
-    Object.entries(config).forEach(entry => {
+  private async _waitForCardHelpers(timeoutMs: number): Promise<() => Promise<CardHelpers>> {
+    const start = Date.now();
+
+    while (Date.now() - start < timeoutMs) {
+      const maybeLoader = (window as WindowWithCardHelpers).loadCardHelpers;
+      if (typeof maybeLoader === 'function') {
+        return maybeLoader;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    throw new Error('window.loadCardHelpers was not available in time');
+  }
+
+  private _asStyleRecord(value: unknown): Record<string, string> | undefined {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return undefined;
+    }
+
+    const style: Record<string, string> = {};
+    Object.entries(value as Record<string, unknown>).forEach(([key, entry]) => {
+      if (entry !== undefined && entry !== null) {
+        style[key] = String(entry);
+      }
+    });
+
+    return style;
+  }
+
+  private _evaluateConfig(config: ConfigObject): ConfigObject {
+    Object.entries(config).forEach((entry) => {
       const key = entry[0];
       const value = entry[1];
 
       if (value !== null) {
-        if (value instanceof Array) {
+        if (Array.isArray(value)) {
           config[key] = this._evaluateArray(value);
         } else if (typeof value === 'object') {
-          config[key] = this._evaluateConfig(value);
+          config[key] = this._evaluateConfig(value as ConfigObject);
         } else if (typeof value === 'string' && value.includes('${')) {
           config[key] = this._evaluateTemplate(value);
         }
@@ -194,14 +289,13 @@ export class ConfigTemplateCard extends LitElement {
     return config;
   }
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  private _evaluateArray(array: any): any {
+  private _evaluateArray(array: unknown[]): unknown[] {
     for (let i = 0; i < array.length; ++i) {
       const value = array[i];
-      if (value instanceof Array) {
+      if (Array.isArray(value)) {
         array[i] = this._evaluateArray(value);
       } else if (typeof value === 'object') {
-        array[i] = this._evaluateConfig(value);
+        array[i] = this._evaluateConfig(value as ConfigObject);
       } else if (typeof value === 'string' && value.includes('${')) {
         array[i] = this._evaluateTemplate(value);
       }
@@ -210,26 +304,29 @@ export class ConfigTemplateCard extends LitElement {
     return array;
   }
 
-  private _evaluateTemplate(template: string): string {
+  private _evaluateTemplate(template: string, hassOverride?: HomeAssistant): unknown {
     if (!template.includes('${')) {
       return template;
     }
 
-    /* eslint-disable @typescript-eslint/no-unused-vars */
-    const user = this.hass ? this.hass.user : undefined;
-    const states = this.hass ? this.hass.states : undefined;
-    const vars: any[] = [];
-    const namedVars: { [key: string]: any } = {};
+    const hass = hassOverride ?? this.hass;
+    const user = hass ? hass.user : undefined;
+    const states = hass ? hass.states : undefined;
+    const vars: EvalVars = [] as unknown as EvalVars;
+    const namedVars: Record<string, string> = {};
     const arrayVars: string[] = [];
-    let varDef = '';
 
-    if (this._config) {
-      if (Array.isArray(this._config.variables)) {
-        arrayVars.push(...this._config.variables);
-      } else {
-        Object.assign(namedVars, this._config.variables);
+    const evaluateExpression = (expression: unknown): unknown => {
+      if (typeof expression !== 'string') {
+        return expression;
       }
-    }
+
+      const namedVarNames = Object.keys(namedVars);
+      const namedVarValues = namedVarNames.map((name) => vars[name]);
+      const evaluator = new Function('hass', 'states', 'user', 'vars', ...namedVarNames, `return (${expression});`);
+
+      return evaluator(hass, states, user, vars, ...namedVarValues);
+    };
 
     const localVars = this.getLovelaceConfig();
 
@@ -241,18 +338,24 @@ export class ConfigTemplateCard extends LitElement {
       }
     }
 
+    if (this._config) {
+      if (Array.isArray(this._config.variables)) {
+        arrayVars.push(...this._config.variables);
+      } else {
+        Object.assign(namedVars, this._config.variables);
+      }
+    }
+
     for (const v in arrayVars) {
-      const newV = eval(arrayVars[v]);
+      const newV = evaluateExpression(arrayVars[v]);
       vars.push(newV);
     }
 
     for (const varName in namedVars) {
-      const newV = eval(namedVars[varName]);
+      const newV = evaluateExpression(namedVars[varName]);
       vars[varName] = newV;
-      // create variable definitions to be injected:
-      varDef = varDef + `var ${varName} = vars['${varName}'];\n`;
     }
 
-    return eval(varDef + template.substring(2, template.length - 1));
+    return evaluateExpression(template.substring(2, template.length - 1));
   }
 }
