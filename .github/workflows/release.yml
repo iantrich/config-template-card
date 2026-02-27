@@ -18,6 +18,46 @@ jobs:
         with:
           node-version: '24'
 
+      - name: Validate release tag is semver
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          node -e "const version = process.env.VERSION; const semverRegex = /^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$/; if (!semverRegex.test(version)) { console.error(`Invalid release tag '${process.env.GITHUB_REF_NAME}'. Expected semver like '1.2.3' or 'v1.2.3'.`); process.exit(1); }"
+
+          echo "Release tag is valid semver: $VERSION"
+        env:
+          VERSION: ${{ github.ref_name }}
+
+      - name: Bump versions from release tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Using release version: $VERSION"
+
+          node -e "const fs=require('fs');const version=process.env.VERSION;const pkgPath='package.json';const pkg=JSON.parse(fs.readFileSync(pkgPath,'utf8'));pkg.version=version;fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');"
+
+          sed -i "s/^export const CARD_VERSION = '.*';$/export const CARD_VERSION = '$VERSION';/" src/const.ts
+        env:
+          VERSION: ${{ github.ref_name }}
+
+      - name: Validate bumped versions
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          CONST_VERSION=$(sed -n "s/^export const CARD_VERSION = '\(.*\)';$/\1/p" src/const.ts)
+
+          [ "$PKG_VERSION" = "$VERSION" ] || {
+            echo "package.json version mismatch: expected '$VERSION', got '$PKG_VERSION'"
+            exit 1
+          }
+
+          [ "$CONST_VERSION" = "$VERSION" ] || {
+            echo "src/const.ts CARD_VERSION mismatch: expected '$VERSION', got '$CONST_VERSION'"
+            exit 1
+          }
+
+          echo "Version validation passed: $VERSION"
+
       # Build
       - name: Install dependencies
         run: |
