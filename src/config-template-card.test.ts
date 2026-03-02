@@ -332,6 +332,43 @@ describe('ConfigTemplateCard logic', () => {
     expect(value).toBe('GLOBAL-LOCAL');
   });
 
+  it('_evaluateTemplate logs context and rethrows when expression evaluation fails', () => {
+    card.hass = {
+      states: {},
+    } as never;
+
+    (card as unknown as { _config: unknown })._config = {
+      ...baseConfig,
+      variables: {
+        room: "'kitchen'",
+      },
+    };
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+      return undefined;
+    });
+
+    expect(() => {
+      (
+        card as unknown as {
+          _evaluateTemplate: (template: string) => unknown;
+        }
+      )._evaluateTemplate('${missing.value}');
+    }).toThrow();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Failed to evaluate template expression',
+      expect.objectContaining({
+        template: '${missing.value}',
+        expression: 'missing.value',
+        namedVariables: { room: "'kitchen'" },
+        arrayVariables: [],
+        evaluatedVariables: expect.objectContaining({ room: 'kitchen' }),
+        error: expect.any(Error),
+      }),
+    );
+  });
+
   it('_waitForCardHelpers resolves when loader appears', async () => {
     vi.useFakeTimers();
 

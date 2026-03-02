@@ -324,7 +324,19 @@ export class ConfigTemplateCard extends LitElement {
       const namedVarValues = namedVarNames.map((name) => vars[name]);
       const evaluator = new Function('hass', 'states', 'user', 'vars', ...namedVarNames, `return (${expression});`);
 
-      return evaluator(hass, states, user, vars, ...namedVarValues);
+      try {
+        return evaluator(hass, states, user, vars, ...namedVarValues);
+      } catch (error) {
+        console.error('Failed to evaluate template expression', {
+          template,
+          expression,
+          namedVariables: namedVars,
+          arrayVariables: arrayVars,
+          evaluatedVariables: vars,
+          error,
+        });
+        throw error;
+      }
     };
 
     const localVars = this.getLovelaceConfig();

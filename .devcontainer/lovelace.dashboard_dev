@@ -1,0 +1,141 @@
+{
+  "version": 1,
+  "minor_version": 1,
+  "key": "lovelace.dashboard_test",
+  "data": {
+    "config": {
+      "views": [
+        {
+          "type": "sections",
+          "sections": [
+            {
+              "type": "grid",
+              "cards": [
+                {
+                  "type": "heading",
+                  "heading": "New section"
+                },
+                {
+                  "type": "picture-elements",
+                  "image": "https://upload.wikimedia.org/wikipedia/commons/4/49/Koala_climbing_tree.jpg",
+                  "elements": [
+                    {
+                      "type": "custom:config-template-card",
+                      "style": {
+                        "top": "80.3%",
+                        "left": "77.6%",
+                        "opacity": "50%"
+                      },
+                      "entities": [
+                        "switch.ac"
+                      ],
+                      "element": {
+                        "type": "image",
+                        "tap_action": {
+                          "action": "toggle"
+                        },
+                        "entity": "switch.ac",
+                        "image": "https://cdn-icons-png.flaticon.com/512/3653/3653238.png",
+                        "state_image": {
+                          "on": "https://cdn-icons-png.flaticon.com/512/3653/3653234.png"
+                        }
+                      }
+                    },
+                    {
+                      "type": "custom:config-template-card",
+                      "variables": [
+                        "states['light.bed_light'].state"
+                      ],
+                      "entities": [
+                        "light.bed_light"
+                      ],
+                      "element": {
+                        "type": "icon",
+                        "icon": "${vars[0] === 'on' ? 'mdi:home' : 'mdi:circle'}"
+                      },
+                      "style": {
+                        "top": "47%",
+                        "left": "75%"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "type": "entities",
+                  "entities": [
+                    {
+                      "type": "custom:config-template-card",
+                      "variables": [
+                        "states['light.bed_light'].state"
+                      ],
+                      "entities": [
+                        "light.bed_light"
+                      ],
+                      "row": {
+                        "type": "section",
+                        "label": "${vars[0] === 'on' ? 'Light On' : 'Light Off'}"
+                      }
+                    },
+                    {
+                      "entity": "light.bed_light"
+                    }
+                  ]
+                },
+                {
+                  "type": "custom:config-template-card",
+                  "variables": [
+                    "states['sensor.light'].state"
+                  ],
+                  "entities": [
+                    "${vars[0]}"
+                  ],
+                  "card": {
+                    "type": "light",
+                    "entity": "${vars[0]}",
+                    "name": "${states[vars[0]].state === 'on' ? 'Light On' : 'Light Off'}"
+                  }
+                },
+                {
+                  "type": "custom:config-template-card",
+                  "variables": [
+                    "states['light.bed_light'].state",
+                    "states['cover.garage_door'].state"
+                  ],
+                  "entities": [
+                    "light.bed_light",
+                    "cover.garage_door",
+                    "alarm_control_panel.alarm",
+                    "climate.ecobee"
+                  ],
+                  "card": {
+                    "type": "${vars[0] === 'on' ? 'custom:hui-glance-card' : 'custom:hui-entities-card'}",
+                    "entities": [
+                      {
+                        "entity": "cover.garage_door",
+                        "name": "${vars[1] === 'open' && states['cover.garage_door'].state === 'open' ? 'Close the garage!' : ''}"
+                      },
+                      {
+                        "entity": "binary_sensor.basement_floor_wet"
+                      },
+                      {
+                        "entity": "climate.ecobee",
+                        "name": "${states['climate.ecobee'].attributes.current_temperature > 22 ? 'Cozy' : 'Too Hot/Cold'}"
+                      },
+                      {
+                        "entity": "cover.garage_door"
+                      },
+                      {
+                        "entity": "${vars[0] === 'on' ? 'light.bed_light' : 'climate.ecobee'}",
+                        "icon": "${vars[1] === 'open' ? 'mdi:hotel' : '' }"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

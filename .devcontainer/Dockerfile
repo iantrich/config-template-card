@@ -1,22 +1,13 @@
-ARG NODE_VERSION=20
-FROM node:${NODE_VERSION}-bookworm-slim
+FROM thomasloven/hass-custom-devcontainer:latest
 
-# Install additional tools as root
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    git \
-    curl \
+# Install Node.js 24 (must run as root)
+USER root
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user for development with proper home directory
-RUN useradd -m -s /bin/bash nodejs
+# Fix CRLF line endings in the container script (base image ships with Windows line endings)
+RUN sed -i 's/\r//' /usr/bin/container
 
-# Set working directory
-WORKDIR /workspace
-
-# Set proper permissions for npm cache
-RUN mkdir -p /home/nodejs/.npm && chown -R nodejs:nodejs /home/nodejs
-
-# Switch to non-root user
-USER nodejs
-
-CMD ["/bin/bash"]
+# Enable corepack (yarn)
+RUN corepack enable

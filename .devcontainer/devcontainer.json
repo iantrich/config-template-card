@@ -3,15 +3,9 @@
 {
   "name": "Home Assistant Custom Card Dev",
   
-  // Use pre-built Home Assistant devcontainer image
-  "image": "thomasloven/hass-custom-devcontainer:latest",
-
-  // Install Node.js 24 on top of the base image
-  "features": {
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "24",
-      "nvmInstallPath": "/home/vscode/.nvm"
-    }
+  // Build from Dockerfile based on thomasloven/hass-custom-devcontainer (provides the `container` CLI)
+  "build": {
+    "dockerfile": "Dockerfile"
   },
 
   // Set working directory
