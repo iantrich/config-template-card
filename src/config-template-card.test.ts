@@ -434,7 +434,7 @@ describe('ConfigTemplateCard logic', () => {
       });
     };
 
-    const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
       return undefined;
     });
 
@@ -443,6 +443,6 @@ describe('ConfigTemplateCard logic', () => {
     await promise;
 
     expect((card as unknown as { _helpers?: unknown })._helpers).toBeUndefined();
-    expect(debugSpy).toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalled();
   });
 });

@@ -235,7 +235,7 @@ export class ConfigTemplateCard extends LitElement {
       ]);
       this.requestUpdate();
     } catch (error) {
-      console.debug('Unable to load Home Assistant card helpers', error);
+      console.error('Unable to load Home Assistant card helpers', error);
     }
   }
 
@@ -315,7 +315,7 @@ export class ConfigTemplateCard extends LitElement {
     const namedVars: Record<string, string> = {};
     const arrayVars: string[] = [];
 
-    const evaluateExpression = (expression: unknown): unknown => {
+    const evaluateExpression = (expression: unknown, variableName?: string): unknown => {
       if (typeof expression !== 'string') {
         return expression;
       }
@@ -330,6 +330,7 @@ export class ConfigTemplateCard extends LitElement {
         console.error('Failed to evaluate template expression', {
           template,
           expression,
+          variableName,
           namedVariables: namedVars,
           arrayVariables: arrayVars,
           evaluatedVariables: vars,
@@ -359,15 +360,15 @@ export class ConfigTemplateCard extends LitElement {
     }
 
     for (const v in arrayVars) {
-      const newV = evaluateExpression(arrayVars[v]);
+      const newV = evaluateExpression(arrayVars[v], `variables[${v}]`);
       vars.push(newV);
     }
 
     for (const varName in namedVars) {
-      const newV = evaluateExpression(namedVars[varName]);
+      const newV = evaluateExpression(namedVars[varName], varName);
       vars[varName] = newV;
     }
 
-    return evaluateExpression(template.substring(2, template.length - 1));
+    return evaluateExpression(template.substring(2, template.length - 1), 'template');
   }
 }
