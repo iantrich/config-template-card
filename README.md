@@ -19,7 +19,7 @@ This card is for [Lovelace](https://www.home-assistant.io/lovelace) on [Home Ass
 
 ## Minimum Home Assistant version
 
-Home Assistant version 2026.2.3 or higher is required as of release 2.0.0 of restriction-card
+Home Assistant version 2026.2.3 or higher is required as of release 2.0.0 of config-template-card
 
 ## Installation
 
