@@ -17,19 +17,13 @@
 
 This card is for [Lovelace](https://www.home-assistant.io/lovelace) on [Home Assistant](https://www.home-assistant.io/) that allows you to use pretty much any valid Javascript on the hass object in your configuration
 
-## Minimum Home Assistant Version
+## Minimum Home Assistant version
 
-Home Assistant version 0.110.0 or higher is required as of release 1.2.0 of config-template-card
+Home Assistant version 2026.2.3 or higher is required as of release 2.0.0 of restriction-card
 
 ## Installation
 
 Use [HACS](https://hacs.xyz) or follow this [guide](https://github.com/thomasloven/hass-config/wiki/Lovelace-Plugins)
-
-```yaml
-resources:
-  - url: /local/config-template-card.js
-    type: module
-```
 
 ## Options
 
