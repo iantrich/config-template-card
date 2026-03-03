@@ -44,7 +44,7 @@ This directory contains the development container configuration for building and
 
 This project uses the published image:
 
-- `ghcr.io/custom-cards/custom-card-devcontainer:1.0.0-beta.1`
+- `ghcr.io/custom-cards/custom-card-devcontainer:latest`
 
 The image includes the `container` helper used by the devcontainer lifecycle commands.
 
