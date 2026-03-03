@@ -35,11 +35,18 @@ This directory contains the development container configuration for building and
 
 ```
 .devcontainer/
-├── Dockerfile           # Docker image definition
 ├── devcontainer.json    # VS Code dev container config
 ├── .gitignore          # Ignore HA data
 └── README.md           # This file
 ```
+
+## Base Image
+
+This project uses the published image:
+
+- `ghcr.io/custom-cards/custom-card-devcontainer:1.0.0-beta.1`
+
+The image includes the `container` helper used by the devcontainer lifecycle commands.
 
 ## Development Workflow
 

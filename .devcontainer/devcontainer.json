@@ -1,12 +1,11 @@
 // For format details, see https://aka.ms/devcontainer.json
-// Uses thomasloven/hass-custom-devcontainer for Home Assistant + Dev environment
+// Uses custom-cards/custom-card-devcontainer image for Home Assistant + Dev environment
 {
   "name": "Home Assistant Custom Card Dev",
-  
-  // Build from Dockerfile based on thomasloven/hass-custom-devcontainer (provides the `container` CLI)
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
+
+  // Use published devcontainer image
+  "image": "ghcr.io/custom-cards/custom-card-devcontainer:latest",
+  "remoteUser": "vscode",
 
   // Set working directory
   "workspaceFolder": "/workspaces/test",
@@ -44,10 +43,11 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "dbaeumer.vscode-eslint",
-        "esbenp.prettier-vscode",
-        "ms-vscode.vscode-typescript-next",
-        "redhat.vscode-yaml"
+        "github.vscode-github-actions",
+        "github.vscode-pull-request-github",
+        "bierner.lit-html",
+        "redhat.vscode-yaml", 
+        "esbenp.prettier-vscode"
       ],
       "settings": {
         "typescript.enablePromptUseWorkspaceTsdk": true,
