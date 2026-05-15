@@ -253,6 +253,19 @@ export class ConfigTemplateCard extends LitElement {
       varDef = varDef + `var ${varName} = vars['${varName}'];\n`;
     }
 
-    return eval(varDef + template.substring(2, template.length - 1));
+    // If the entire string is a single template expression like ${expr}, evaluate
+    // it directly so the return type is preserved (e.g. numbers, objects).
+    // Otherwise, evaluate it as a template literal to support embedded expressions
+    // like "sensor.${best_model}_suffix" or "Title ${var} text".
+    const isSingleExpression =
+      template.startsWith('${') &&
+      template.endsWith('}') &&
+      !template.slice(2, -1).includes('${');
+
+    if (isSingleExpression) {
+      return eval(varDef + template.substring(2, template.length - 1));
+    } else {
+      return eval(varDef + '`' + template.replace(/`/g, '\\`') + '`');
+    }
   }
 }
