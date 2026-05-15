@@ -246,11 +246,18 @@ export class ConfigTemplateCard extends LitElement {
       vars.push(newV);
     }
 
+    // Declare all named variables upfront so they share a single scope and can
+    // reference each other (e.g. a function variable that closes over another variable).
     for (const varName in namedVars) {
-      const newV = eval(namedVars[varName]);
-      vars[varName] = newV;
-      // create variable definitions to be injected:
-      varDef = varDef + `var ${varName} = vars['${varName}'];\n`;
+      varDef = varDef + `var ${varName};\n`;
+    }
+
+    // Assign each variable by evaluating its code with eval() so that multi-statement
+    // blocks using const/let/var are handled correctly (eval returns the last expression).
+    // All assignments run in the same outer eval scope, so closures formed here can
+    // access sibling variable names declared above.
+    for (const varName in namedVars) {
+      varDef = varDef + `${varName} = eval(${JSON.stringify(namedVars[varName])});\n`;
     }
 
     return eval(varDef + template.substring(2, template.length - 1));
