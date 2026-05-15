@@ -88,9 +88,17 @@ export class ConfigTemplateCard extends LitElement {
       const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
 
       if (oldHass) {
-        for (const entity of this._config.entities) {
-          const evaluatedTemplate = this._evaluateTemplate(entity);
-          if (Boolean(this.hass && oldHass.states[evaluatedTemplate] !== this.hass.states[evaluatedTemplate])) {
+        // entities may be a template expression (e.g. `${LIGHTS}`) that evaluates to an array
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let entityList: string[] = this._config.entities as any;
+        if (typeof (entityList as unknown) === 'string') {
+          entityList = this._evaluateTemplate(entityList as unknown as string);
+        }
+
+        for (const entity of entityList) {
+          const evaluatedEntity =
+            typeof entity === 'string' && entity.includes('${') ? this._evaluateTemplate(entity) : entity;
+          if (Boolean(this.hass && oldHass.states[evaluatedEntity] !== this.hass.states[evaluatedEntity])) {
             return true;
           }
         }
@@ -210,7 +218,8 @@ export class ConfigTemplateCard extends LitElement {
     return array;
   }
 
-  private _evaluateTemplate(template: string): string {
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  private _evaluateTemplate(template: string): any {
     if (!template.includes('${')) {
       return template;
     }
@@ -249,10 +258,22 @@ export class ConfigTemplateCard extends LitElement {
     for (const varName in namedVars) {
       const newV = eval(namedVars[varName]);
       vars[varName] = newV;
-      // create variable definitions to be injected:
       varDef = varDef + `var ${varName} = vars['${varName}'];\n`;
     }
 
-    return eval(varDef + template.substring(2, template.length - 1));
+    const code = template.substring(2, template.length - 1);
+
+    // Use new Function for explicit variable scoping, with eval(__code) inside to support
+    // both expression-style (${someVar}) and multi-statement block-style templates
+    // (e.g. `${ let cards = []; ...; cards; }`). Using `return eval(__code)` is required
+    // because `return (let x = ...)` is a syntax error — eval naturally returns the last
+    // expression value from a statement block.
+    // eslint-disable-next-line no-new-func
+    return new Function('states', 'user', 'vars', '__code', varDef + 'return eval(__code)')(
+      states,
+      user,
+      vars,
+      code,
+    );
   }
 }
