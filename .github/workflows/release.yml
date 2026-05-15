@@ -8,23 +8,70 @@ jobs:
   release:
     name: Prepare release
     runs-on: ubuntu-latest
+    env:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: 0
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Validate release tag is semver
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          export VERSION
+
+          node -e "const version = process.env.VERSION; const semverRegex = /^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$/; if (!semverRegex.test(version)) { console.error(`Invalid release tag '${process.env.GITHUB_REF_NAME}'. Expected semver like '1.2.3' or 'v1.2.3'.`); process.exit(1); }"
+
+          echo "Release tag is valid semver: $VERSION"
+
+      - name: Bump versions from release tag
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          export VERSION
+          echo "Using release version: $VERSION"
+
+          node -e "const fs=require('fs');const version=process.env.VERSION;const pkgPath='package.json';const pkg=JSON.parse(fs.readFileSync(pkgPath,'utf8'));pkg.version=version;fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n');"
+
+          sed -i "s/^export const CARD_VERSION = '.*';$/export const CARD_VERSION = '$VERSION';/" src/const.ts
+
+      - name: Validate bumped versions
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          CONST_VERSION=$(sed -n "s/^export const CARD_VERSION = '\(.*\)';$/\1/p" src/const.ts)
+
+          [ "$PKG_VERSION" = "$VERSION" ] || {
+            echo "package.json version mismatch: expected '$VERSION', got '$PKG_VERSION'"
+            exit 1
+          }
+
+          [ "$CONST_VERSION" = "$VERSION" ] || {
+            echo "src/const.ts CARD_VERSION mismatch: expected '$VERSION', got '$CONST_VERSION'"
+            exit 1
+          }
+
+          echo "Version validation passed: $VERSION"
 
       # Build
-      - name: Build the file
+      - name: Install dependencies
         run: |
-          cd /home/runner/work/config-template-card/config-template-card
-          npm install
-          npm run build
+          corepack enable
+          corepack prepare yarn@4.12.0 --activate
+          yarn install --immutable
 
-      # Upload build file to the releas as an asset.
-      - name: Upload zip to release
-        uses: svenstaro/upload-release-action@v1-release
+      - name: Build the file
+        run: yarn build
 
+      # Upload build artifact to the release as an asset.
+      - name: Upload release asset
+        uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: /home/runner/work/config-template-card/config-template-card/dist/config-template-card.js
+          file: dist/config-template-card.js
           asset_name: config-template-card.js
           tag: ${{ github.ref }}
           overwrite: true

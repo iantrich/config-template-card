@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es2017",
+    "target": "es2022",
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "lib": [
-      "es2017",
+      "es2022",
       "dom",
       "dom.iterable"
     ],
@@ -13,7 +13,6 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "strict": true,
-    "noImplicitAny": false,
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "experimentalDecorators": true

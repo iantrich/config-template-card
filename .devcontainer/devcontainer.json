@@ -1,32 +1,70 @@
-// See https://aka.ms/vscode-remote/devcontainer.json for format details.
+// For format details, see https://aka.ms/devcontainer.json
+// Uses custom-cards/custom-card-devcontainer image for Home Assistant + Dev environment
 {
-  "name": "Config Template Card Development",
-  "image": "ludeeus/container:monster",
-  "context": "..",
-  "appPort": ["5000:5000", "9123:8123"],
-  "postCreateCommand": "npm install",
-  "runArgs": [
-    "-v",
-    "${env:HOME}${env:USERPROFILE}/.ssh:/tmp/.ssh" // This is added so you can push from inside the container
+  "name": "Home Assistant Custom Card Dev",
+
+  // Use published devcontainer image
+  "image": "ghcr.io/custom-cards/custom-card-devcontainer:latest",
+  "remoteUser": "vscode",
+
+  // Set working directory
+  "workspaceFolder": "/workspaces/test",
+  
+  // Mount project to workspace, dist to Lovelace plugins, and config directory for Home Assistant
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspaces/test,type=bind",
+    "source=${localWorkspaceFolder}/dist,target=/config/www/workspace,type=bind",
+    "source=${localWorkspaceFolder}/.devcontainer/config,target=/config,type=bind"
   ],
-  "extensions": [
-    "github.vscode-pull-request-github",
-    "eamodio.gitlens",
-    "dbaeumer.vscode-eslint",
-    "esbenp.prettier-vscode",
-    "bierner.lit-html",
-    "runem.lit-plugin",
-    "auchenberg.vscode-browser-preview",
-    "davidanson.vscode-markdownlint",
-    "redhat.vscode-yaml"
-  ],
-  "settings": {
-    "files.eol": "\n",
-    "editor.tabSize": 4,
-    "terminal.integrated.shell.linux": "/bin/bash",
-    "editor.formatOnPaste": false,
-    "editor.formatOnSave": true,
-    "editor.formatOnType": true,
-    "files.trimTrailingWhitespace": true
+
+  // Forward Home Assistant port
+  "forwardPorts": [8123],
+  "portsAttributes": {
+    "8123": {
+      "label": "Home Assistant",
+      "onAutoForward": "notify"
+    }
+  },
+
+  // Container environment variables for Home Assistant setup
+  "containerEnv": {
+    "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+    "DEVCONTAINER": "1",
+    "HASS_USERNAME": "dev",
+    "HASS_PASSWORD": "dev",
+    "LOVELACE_REMOTE_FILES": "http://localhost:5000/config-template-card.js"
+  },
+
+  // Setup Home Assistant and install dependencies
+  "postCreateCommand": "container setup && corepack enable && yarn install",
+  "postStartCommand": "container launch & yarn start & wait",
+
+  // VS Code extensions for development
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "github.vscode-github-actions",
+        "github.vscode-pull-request-github",
+        "bierner.lit-html",
+        "redhat.vscode-yaml", 
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "typescript.enablePromptUseWorkspaceTsdk": true,
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.fixAll.eslint": "explicit"
+          }
+        },
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.tsserver.pluginPaths": [
+          "node_modules/typescript/lib"
+        ],
+        "files.eol": "\n",
+        "task.allowAutomaticTasks": "on"
+      }
+    }
   }
 }
