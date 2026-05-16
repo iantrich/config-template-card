@@ -369,6 +369,17 @@ export class ConfigTemplateCard extends LitElement {
       vars[varName] = newV;
     }
 
-    return evaluateExpression(template.substring(2, template.length - 1), 'template');
+    const isSingleExpression =
+      template.startsWith('${') &&
+      template.endsWith('}') &&
+      !template.slice(2, -1).includes('${');
+
+    if (isSingleExpression) {
+      // Pure ${expr}: strip wrapper and evaluate directly, preserving return type (number, object, etc.)
+      return evaluateExpression(template.substring(2, template.length - 1), 'template');
+    } else {
+      // Embedded template: evaluate as a JS template literal so ${...} inside is interpolated
+      return evaluateExpression('`' + template.replace(/`/g, '\\`') + '`', 'template');
+    }
   }
 }
