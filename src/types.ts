@@ -7,7 +7,7 @@ import type {
 
 export interface ConfigTemplateConfig {
   type: string;
-  entities: string[];
+  entities: string[] | string;
   variables?: string[] | { [key: string]: string };
   card?: LovelaceCardConfig;
   row?: EntitiesCardEntityConfig;

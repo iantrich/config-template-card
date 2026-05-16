@@ -332,6 +332,75 @@ describe('ConfigTemplateCard logic', () => {
     expect(value).toBe('GLOBAL-LOCAL');
   });
 
+  it('_evaluateTemplate evaluates multi-statement block templates with let declarations', () => {
+    card.hass = {
+      user: { name: 'Dev' },
+      states: {
+        'light.kitchen': { state: 'on' },
+        'light.bedroom': { state: 'off' },
+      },
+    } as never;
+
+    (card as unknown as { _config: unknown })._config = {
+      ...baseConfig,
+      variables: {
+        LIGHTS: "Object.keys(states).filter(k => k.startsWith('light'))",
+      },
+    };
+
+    const value = (
+      card as unknown as {
+        _evaluateTemplate: (template: string) => unknown;
+      }
+    )._evaluateTemplate('${\n  let result = [];\n  LIGHTS.forEach(e => result.push(e));\n  result;\n}');
+
+    expect(Array.isArray(value)).toBe(true);
+    expect(value).toContain('light.kitchen');
+    expect(value).toContain('light.bedroom');
+  });
+
+  it('shouldUpdate handles entities as a string template that evaluates to an array', () => {
+    (card as unknown as { _initialized: boolean })._initialized = true;
+    (card as unknown as { _config: unknown })._config = {
+      ...baseConfig,
+      entities: "${Object.keys(states).filter(k => k.startsWith('light'))}",
+      variables: {},
+    };
+
+    card.hass = {
+      states: {
+        'light.kitchen': {
+          state: 'on',
+          last_changed: '2',
+          last_updated: '2',
+        },
+      },
+    } as never;
+
+    const changedProps = new Map([
+      [
+        'hass',
+        {
+          states: {
+            'light.kitchen': {
+              state: 'off',
+              last_changed: '1',
+              last_updated: '1',
+            },
+          },
+        },
+      ],
+    ]);
+
+    const result = (
+      card as unknown as {
+        shouldUpdate: (props: Map<string, unknown>) => boolean;
+      }
+    ).shouldUpdate(changedProps);
+
+    expect(result).toBe(true);
+  });
+
   it('_evaluateTemplate logs context and rethrows when expression evaluation fails', () => {
     card.hass = {
       states: {},

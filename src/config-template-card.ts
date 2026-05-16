@@ -123,7 +123,16 @@ export class ConfigTemplateCard extends LitElement {
       const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
 
       if (oldHass) {
-        for (const entityTemplate of this._config.entities) {
+        const rawEntities = this._config.entities;
+        const entityList: string[] =
+          typeof rawEntities === 'string'
+            ? (() => {
+                const r = this._evaluateTemplate(rawEntities);
+                return Array.isArray(r) ? (r as string[]) : [String(r)];
+              })()
+            : rawEntities;
+
+        for (const entityTemplate of entityList) {
           const currentEntityId = String(this._evaluateTemplate(entityTemplate));
           const oldEntityId = String(this._evaluateTemplate(entityTemplate, oldHass));
 
@@ -322,10 +331,20 @@ export class ConfigTemplateCard extends LitElement {
 
       const namedVarNames = Object.keys(namedVars);
       const namedVarValues = namedVarNames.map((name) => vars[name]);
-      const evaluator = new Function('hass', 'states', 'user', 'vars', ...namedVarNames, `return (${expression});`);
+      // Pass code as a parameter so eval runs in the function scope (named params visible),
+      // and returns the completion value — supports both single-expression and multi-statement blocks.
+      const evaluator = new Function(
+        'hass',
+        'states',
+        'user',
+        'vars',
+        ...namedVarNames,
+        '__code',
+        `return eval(__code);`,
+      );
 
       try {
-        return evaluator(hass, states, user, vars, ...namedVarValues);
+        return evaluator(hass, states, user, vars, ...namedVarValues, expression);
       } catch (error) {
         console.error('Failed to evaluate template expression', {
           template,
