@@ -322,7 +322,7 @@ export class ConfigTemplateCard extends LitElement {
 
       const namedVarNames = Object.keys(namedVars);
       const namedVarValues = namedVarNames.map((name) => vars[name]);
-      const evaluator = new Function('hass', 'states', 'user', 'vars', ...namedVarNames, `return (${expression});`);
+      const evaluator = new Function('hass', 'states', 'user', 'vars', ...namedVarNames, `return eval(${JSON.stringify(expression)});`);
 
       try {
         return evaluator(hass, states, user, vars, ...namedVarValues);
