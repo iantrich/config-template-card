@@ -84,6 +84,10 @@ export class ConfigTemplateCard extends LitElement {
       return true;
     }
 
+    if (changedProps.has('_helpers')) {
+      return true;
+    }
+
     if (this._config) {
       const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
 
