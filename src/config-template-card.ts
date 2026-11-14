@@ -5,22 +5,21 @@ import type { HomeAssistant, LovelaceCard } from 'custom-card-helpers';
 
 import type {
   CardHelpers,
+  CompiledTemplate,
   ConfigObject,
   ConfigTemplateConfig,
+  EvalContext,
   EvalVars,
   LovelacePanelWithVars,
   TemplateVars,
   WindowWithCardHelpers,
 } from './types';
 import { CARD_VERSION } from './const';
+import { singleTemplateCode, splitTemplate } from './template';
 
-const clone = <T>(value: T): T => {
-  if (typeof globalThis.structuredClone === 'function') {
-    return globalThis.structuredClone(value);
-  }
-
-  return JSON.parse(JSON.stringify(value)) as T;
-};
+/** Named variables that are valid JS identifiers are also exposed as bare names in templates. */
+const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+const CODE_PARAM = '__ctcTemplateCode';
 
 /* eslint no-console: 0 */
 console.info(
@@ -48,6 +47,8 @@ export class ConfigTemplateCard extends LitElement {
   @state() private _config?: ConfigTemplateConfig;
   @state() private _helpers?: CardHelpers;
   private _initialized = false;
+  private _contextCache?: EvalContext;
+  private _compiled = new Map<string, CompiledTemplate>();
 
   public setConfig(config: ConfigTemplateConfig): void {
     if (!config) {
@@ -76,7 +77,13 @@ export class ConfigTemplateCard extends LitElement {
       throw new Error('No entities defined');
     }
 
+    if (!Array.isArray(config.entities) && typeof config.entities !== 'string') {
+      throw new Error('entities must be a list of entity ids or a template that returns one');
+    }
+
     this._config = config;
+    this._contextCache = undefined;
+    this._compiled.clear();
 
     this.loadCardHelpers();
   }
@@ -100,11 +107,11 @@ export class ConfigTemplateCard extends LitElement {
     const localVars = panel?.lovelace?.config?.config_template_card_vars;
 
     if (Array.isArray(localVars)) {
-      return localVars as string[];
+      return localVars as unknown[];
     }
 
     if (localVars && typeof localVars === 'object') {
-      return localVars as { [key: string]: string };
+      return localVars as { [key: string]: unknown };
     }
 
     return undefined;
@@ -115,44 +122,34 @@ export class ConfigTemplateCard extends LitElement {
       this._initialize();
     }
 
-    if (changedProps.has('_config')) {
+    // A new config or freshly loaded card helpers must always render, even when the same update
+    // also carries a hass push with no watched entity changes (#201).
+    if (changedProps.has('_config') || changedProps.has('_helpers')) {
       return true;
     }
 
-    if (this._config && this.hass) {
-      const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
-
-      if (oldHass) {
-        for (const entityTemplate of this._config.entities) {
-          const currentEntityId = String(this._evaluateTemplate(entityTemplate));
-          const oldEntityId = String(this._evaluateTemplate(entityTemplate, oldHass));
-
-          if (oldEntityId !== currentEntityId) {
-            return true;
-          }
-
-          const oldState = oldHass.states[oldEntityId];
-          const currentState = this.hass.states[currentEntityId];
-
-          if (oldState !== currentState) {
-            return true;
-          }
-
-          if (
-            oldState &&
-            currentState &&
-            (oldState.state !== currentState.state ||
-              oldState.last_changed !== currentState.last_changed ||
-              oldState.last_updated !== currentState.last_updated)
-          ) {
-            return true;
-          }
-        }
-        return false;
-      }
+    const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
+    if (!this._config || !this.hass || !oldHass) {
+      return true;
     }
 
-    return true;
+    let oldEntities: string[];
+    let currentEntities: string[];
+    try {
+      oldEntities = this._resolveEntities(oldHass);
+      currentEntities = this._resolveEntities(this.hass);
+    } catch {
+      // Let render() evaluate again and surface the error.
+      return true;
+    }
+
+    if (oldEntities.length !== currentEntities.length) {
+      return true;
+    }
+
+    return currentEntities.some(
+      (entityId, index) => entityId !== oldEntities[index] || this.hass?.states[entityId] !== oldHass.states[entityId],
+    );
   }
 
   public getCardSize(): number | Promise<number> {
@@ -181,14 +178,9 @@ export class ConfigTemplateCard extends LitElement {
       return html``;
     }
 
-    let config: ConfigObject = clone(sourceConfig as ConfigObject);
-    let style: ConfigObject = this._config.style ? clone(this._config.style as ConfigObject) : {};
-
-    config = this._evaluateConfig(config);
-    if (style) {
-      style = this._evaluateConfig(style);
-    }
-    const styleRecord = this._asStyleRecord(style);
+    // Evaluation builds new objects, so the stored config is never mutated.
+    const config = this._evaluateConfig(sourceConfig as ConfigObject);
+    const styleRecord = this._asStyleRecord(this._config.style ? this._evaluateConfig(this._config.style) : {});
 
     const element = this._config.card
       ? this._helpers.createCardElement(config)
@@ -270,37 +262,23 @@ export class ConfigTemplateCard extends LitElement {
   }
 
   private _evaluateConfig(config: ConfigObject): ConfigObject {
-    Object.entries(config).forEach((entry) => {
-      const key = entry[0];
-      const value = entry[1];
-
-      if (value !== null) {
-        if (Array.isArray(value)) {
-          config[key] = this._evaluateArray(value);
-        } else if (typeof value === 'object') {
-          config[key] = this._evaluateConfig(value as ConfigObject);
-        } else if (typeof value === 'string' && value.includes('${')) {
-          config[key] = this._evaluateTemplate(value);
-        }
-      }
-    });
-
-    return config;
+    return this._evaluateValue(config, this._getContext(this.hass)) as ConfigObject;
   }
 
-  private _evaluateArray(array: unknown[]): unknown[] {
-    for (let i = 0; i < array.length; ++i) {
-      const value = array[i];
-      if (Array.isArray(value)) {
-        array[i] = this._evaluateArray(value);
-      } else if (typeof value === 'object') {
-        array[i] = this._evaluateConfig(value as ConfigObject);
-      } else if (typeof value === 'string' && value.includes('${')) {
-        array[i] = this._evaluateTemplate(value);
-      }
+  /**
+   * Resolves the watched entity ids. `entities` may be a list whose items are templates, or a
+   * single template that evaluates to a list; nested lists are flattened.
+   */
+  private _resolveEntities(hass: HomeAssistant): string[] {
+    const entities = this._config?.entities;
+    if (entities === undefined) {
+      return [];
     }
 
-    return array;
+    const evaluated = this._evaluateValue(entities, this._getContext(hass));
+    const list = Array.isArray(evaluated) ? evaluated.flat(Infinity) : [evaluated];
+
+    return list.filter((entity) => entity !== undefined && entity !== null).map((entity) => String(entity));
   }
 
   private _evaluateTemplate(template: string, hassOverride?: HomeAssistant): unknown {
@@ -308,67 +286,164 @@ export class ConfigTemplateCard extends LitElement {
       return template;
     }
 
-    const hass = hassOverride ?? this.hass;
-    const user = hass ? hass.user : undefined;
-    const states = hass ? hass.states : undefined;
+    return this._evaluateString(template, this._getContext(hassOverride ?? this.hass));
+  }
+
+  private _evaluateValue(value: unknown, context: EvalContext): unknown {
+    if (Array.isArray(value)) {
+      return value.map((item) => this._evaluateValue(item, context));
+    }
+
+    if (value && typeof value === 'object') {
+      const result: ConfigObject = {};
+      Object.entries(value as ConfigObject).forEach(([key, entry]) => {
+        result[key] = this._evaluateValue(entry, context);
+      });
+      return result;
+    }
+
+    if (typeof value === 'string' && value.includes('${')) {
+      return this._evaluateString(value, context);
+    }
+
+    return value;
+  }
+
+  private _evaluateString(template: string, context: EvalContext): unknown {
+    const code = singleTemplateCode(template);
+    if (code !== undefined) {
+      // The whole value is one template: keep the result's type (number, array, object, ...).
+      return this._runCode(code, context, template, 'template');
+    }
+
+    return splitTemplate(template)
+      .map((part) =>
+        part.kind === 'text' ? part.value : String(this._runCode(part.value, context, template, 'template')),
+      )
+      .join('');
+  }
+
+  /**
+   * Returns the variables evaluated against `hass`. The context is cached for the current hass
+   * object so variables run once per update instead of once per template.
+   */
+  private _getContext(hass: HomeAssistant | undefined): EvalContext {
+    const cached = this._contextCache;
+    if (cached && cached.hass === hass && cached.config === this._config) {
+      return cached;
+    }
+
+    const context = this._buildContext(hass);
+    this._contextCache = context;
+    return context;
+  }
+
+  private _buildContext(hass: HomeAssistant | undefined): EvalContext {
     const vars: EvalVars = [] as unknown as EvalVars;
-    const namedVars: Record<string, string> = {};
-    const arrayVars: string[] = [];
+    const arraySources: unknown[] = [];
+    const namedSources: Record<string, unknown> = {};
 
-    const evaluateExpression = (expression: unknown, variableName?: string): unknown => {
-      if (typeof expression !== 'string') {
-        return expression;
+    // Dashboard-wide variables first, so card variables can build on (and override) them.
+    for (const source of [this.getLovelaceConfig(), this._config?.variables]) {
+      if (Array.isArray(source)) {
+        arraySources.push(...source);
+      } else if (source && typeof source === 'object') {
+        Object.assign(namedSources, source);
       }
+    }
 
-      const namedVarNames = Object.keys(namedVars);
-      const namedVarValues = namedVarNames.map((name) => vars[name]);
-      const evaluator = new Function('hass', 'states', 'user', 'vars', ...namedVarNames, `return (${expression});`);
-
-      try {
-        return evaluator(hass, states, user, vars, ...namedVarValues);
-      } catch (error) {
-        console.error('Failed to evaluate template expression', {
-          template,
-          expression,
-          variableName,
-          namedVariables: namedVars,
-          arrayVariables: arrayVars,
-          evaluatedVariables: vars,
-          error,
-        });
-        throw error;
-      }
+    const names = Object.keys(namedSources).filter((name) => IDENTIFIER.test(name));
+    const context: EvalContext = {
+      hass,
+      config: this._config,
+      vars,
+      names,
+      values: names.map(() => undefined),
+      arraySources,
+      namedSources,
     };
 
-    const localVars = this.getLovelaceConfig();
+    arraySources.forEach((source, index) => {
+      vars.push(this._evaluateVariable(source, context, `variables[${index}]`));
+    });
 
-    if (localVars) {
-      if (Array.isArray(localVars)) {
-        arrayVars.push(...localVars);
-      } else {
-        Object.assign(namedVars, localVars);
+    // Each named variable can use the ones defined before it.
+    Object.keys(namedSources).forEach((name) => {
+      const value = this._evaluateVariable(namedSources[name], context, name);
+      vars[name] = value;
+      const position = names.indexOf(name);
+      if (position >= 0) {
+        context.values[position] = value;
       }
+    });
+
+    return context;
+  }
+
+  private _evaluateVariable(source: unknown, context: EvalContext, variableName: string): unknown {
+    if (typeof source !== 'string') {
+      return source;
     }
 
-    if (this._config) {
-      const configVars = this._config.variables;
-      if (Array.isArray(configVars)) {
-        arrayVars.push(...configVars);
-      } else if (configVars) {
-        Object.assign(namedVars, configVars);
+    // Variables are plain code, but a variable written as `${...}` is accepted too.
+    const code = singleTemplateCode(source) ?? source;
+    return this._runCode(code, context, source, variableName);
+  }
+
+  private _runCode(code: string, context: EvalContext, template: string, variableName: string): unknown {
+    const hass = context.hass;
+
+    try {
+      return this._compile(code, context.names).apply(this, [
+        hass,
+        hass?.states,
+        hass?.user,
+        context.vars,
+        ...context.values,
+      ]);
+    } catch (error) {
+      console.error('Failed to evaluate template expression', {
+        template,
+        expression: code,
+        variableName,
+        namedVariables: context.namedSources,
+        arrayVariables: context.arraySources,
+        evaluatedVariables: context.vars,
+        error,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Compiles code as an expression when it is one, so object literals like `{ a: 1 }` keep working.
+   * Anything else (`let x = ...; x`) runs through eval, which returns the last statement's value.
+   * Functions run with the card as `this`, so `this.hass` works as it did in 1.x.
+   */
+  private _compile(code: string, names: string[]): CompiledTemplate {
+    const key = `${names.join(',')}\n${code}`;
+    const cached = this._compiled.get(key);
+    if (cached) {
+      return cached;
+    }
+
+    const params = ['hass', 'states', 'user', 'vars', ...names];
+    let compiled: CompiledTemplate;
+
+    try {
+      compiled = new Function(...params, `return (\n${code}\n);`) as CompiledTemplate;
+    } catch (error) {
+      if (!(error instanceof SyntaxError)) {
+        throw error;
       }
+
+      const runner = new Function(...params, CODE_PARAM, `return eval(${CODE_PARAM});`) as CompiledTemplate;
+      compiled = function (this: unknown, ...args: unknown[]) {
+        return runner.apply(this, [...args, code]);
+      };
     }
 
-    for (const v in arrayVars) {
-      const newV = evaluateExpression(arrayVars[v], `variables[${v}]`);
-      vars.push(newV);
-    }
-
-    for (const varName in namedVars) {
-      const newV = evaluateExpression(namedVars[varName], varName);
-      vars[varName] = newV;
-    }
-
-    return evaluateExpression(template.substring(2, template.length - 1), 'template');
+    this._compiled.set(key, compiled);
+    return compiled;
   }
 }

@@ -16,6 +16,9 @@
   "repository": "git@github.com:iantrich/config-template-card.git",
   "author": "Ian Richardson <iantrich@gmail.com>",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.19"
+  },
   "dependencies": {
     "custom-card-helpers": "2.0.0",
     "home-assistant-js-websocket": "9.6.0",
