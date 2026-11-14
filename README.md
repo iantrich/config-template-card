@@ -30,7 +30,7 @@ Use [HACS](https://hacs.xyz) or follow this [guide](https://github.com/thomaslov
 | Name      | Type   | Requirement  | Description                                                                                                      |
 | --------- | ------ | ------------ | ---------------------------------------------------------------------------------------------------------------- |
 | type      | string | **Required** | `custom:config-template-card`                                                                                    |
-| entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here                            |
+| entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here, either per item or as one template that returns a list |
 | variables | list   | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars` or by name |
 | card      | object | **Optional** | Card configuration. (A card, row, or element configuaration must be provided)                                    |
 | row       | object | **Optional** | Row configuration. (A card, row, or element configuaration must be provided)                                     |
@@ -210,13 +210,45 @@ What this example does:
 
 Both arrays and objects are supported, just like in card's local variables. It is allowed to mix the two types, i.e. use an array in dashboard variables and an object in card variables, or the other way around. If both definitions are arrays, then dashboard variables are put first in `vars`. In the mixed mode, `vars` have array indices and as well as variable names.
 
-### Note: All templates must be enclosed by `${}`
+## Writing templates
+
+All templates must be enclosed by `${}`. They can be used in three ways:
+
+```yaml
+type: custom:config-template-card
+variables:
+  MODEL: states['input_text.model'].state
+entities:
+  - sensor.${MODEL}_forecast
+card:
+  type: entities
+  # 1. The whole value is one template: the result keeps its type (number, list, object, ...)
+  state_color: ${MODEL !== 'none'}
+  # 2. Templates inside a string: each one is evaluated and joined into the string
+  title: Forecast (${MODEL}) at ${new Date().toLocaleTimeString()}
+  # 3. Several statements: the value of the last statement is used
+  entities: |
+    ${
+      const list = [];
+      list.push('sensor.' + MODEL + '_forecast');
+      list;
+    }
+```
+
+The same rules apply to `variables`, so a variable can hold several statements or define a function that uses variables defined before it.
+
+## Upgrading from 1.x
+
+- Home Assistant 2026.2.3 or newer is required.
+- When dashboard-wide variables (`config_template_card_vars`) and card `variables` are both lists, the dashboard entries now come first in `vars`. If you used `vars[0]` for a card variable while also defining dashboard list variables, update the index or switch to named variables.
+- Named card variables now load after dashboard variables, so they can use (and override) dashboard variables.
+- Templates inside strings (`sensor.${MODEL}_power`) and several templates in one value are now supported.
 
 [Troubleshooting](https://github.com/thomasloven/hass-config/wiki/Lovelace-Plugins)
 
 ## Developers
 
-Fork and then clone the repo to your local machine. From the cloned directory run
+Fork and then clone the repo to your local machine. Node.js 20.19 or newer is required (`nvm use` picks up the version in `.nvmrc`). From the cloned directory run
 
 `yarn install && yarn build`
 
