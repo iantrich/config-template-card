@@ -21,6 +21,8 @@ import { singleTemplateCode, splitTemplate } from './template';
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 const CODE_PARAM = '__ctcTemplateCode';
 const NESTED_CARD_TYPE = 'custom:config-template-card';
+/** A value starting with this prefix is passed through as text, with the prefix removed (from #159). */
+const LITERAL_PREFIX = '$! ';
 
 /* eslint no-console: 0 */
 console.info(
@@ -316,8 +318,13 @@ export class ConfigTemplateCard extends LitElement {
       return result;
     }
 
-    if (typeof value === 'string' && value.includes('${')) {
-      return this._evaluateString(value, context);
+    if (typeof value === 'string') {
+      if (value.startsWith(LITERAL_PREFIX)) {
+        return value.slice(LITERAL_PREFIX.length);
+      }
+      if (value.includes('${')) {
+        return this._evaluateString(value, context);
+      }
     }
 
     return value;
@@ -397,6 +404,10 @@ export class ConfigTemplateCard extends LitElement {
   private _evaluateVariable(source: unknown, context: EvalContext, variableName: string): unknown {
     if (typeof source !== 'string') {
       return source;
+    }
+
+    if (source.startsWith(LITERAL_PREFIX)) {
+      return source.slice(LITERAL_PREFIX.length);
     }
 
     // Variables are plain code, but a variable written as `${...}` is accepted too.

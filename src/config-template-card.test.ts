@@ -698,3 +698,48 @@ describe('layout', () => {
     expect(cssText).toContain('#card { height: 100%; }');
   });
 });
+
+describe('literal prefix', () => {
+  const renderWith = (config: Record<string, unknown>) => {
+    const card = new ConfigTemplateCard();
+    const internals = card as unknown as { _config: unknown; _helpers: unknown; render: () => unknown };
+    const createCardElement = vi.fn((_config: unknown) => document.createElement('div'));
+    card.hass = { states: { 'sun.sun': { state: 'above_horizon' } }, user: { name: 'Dev' } } as never;
+    internals._helpers = { createCardElement };
+    internals._config = { type: 'custom:config-template-card', entities: ['sun.sun'], ...config };
+    internals.render();
+    return createCardElement.mock.calls[0][0] as unknown as Record<string, unknown>;
+  };
+
+  it('passes `$! ` values through untouched, without the prefix', () => {
+    const config = renderWith({
+      card: {
+        type: 'custom:other-card',
+        literal: '$! ${this is for the inner card}',
+        plain: '$! no template here',
+        evaluated: '${user.name}',
+      },
+    });
+
+    expect(config).toEqual({
+      type: 'custom:other-card',
+      literal: '${this is for the inner card}',
+      plain: 'no template here',
+      evaluated: 'Dev',
+    });
+  });
+
+  it('keeps `$! ` variables as text instead of running them', () => {
+    const config = renderWith({
+      variables: { RAW: "$! states['sun.sun'].state", RUN: "states['sun.sun'].state" },
+      card: { type: 'entities', title: '${RAW} = ${RUN}' },
+    });
+
+    expect(config.title).toBe("states['sun.sun'].state = above_horizon");
+  });
+
+  it('only treats the exact prefix at the start as literal', () => {
+    const config = renderWith({ card: { type: 'entities', a: 'cost $! ${1 + 1}', b: '$!${1 + 1}' } });
+    expect(config).toEqual({ type: 'entities', a: 'cost $! 2', b: '$!2' });
+  });
+});
