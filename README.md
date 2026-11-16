@@ -361,6 +361,8 @@ Fork and then clone the repo to your local machine. Node.js 20.19 or newer is re
 
 `yarn install && yarn build`
 
+Every pull request's **Build** check uploads the built `config-template-card.js` as an artifact. Download it from the check's summary page to test a change before it is released.
+
 [commits-shield]: https://img.shields.io/github/commit-activity/y/custom-cards/config-template-card.svg?style=for-the-badge
 [commits]: https://github.com/custom-cards/config-template-card/commits/master
 [discord]: https://discord.gg/Qa5fW2R
