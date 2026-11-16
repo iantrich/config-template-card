@@ -1,0 +1,24 @@
+name: Prevent npm lockfiles
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Fail if npm lockfiles exist
+        run: |
+          set -e
+          disallowed_files=$(find . -type f \( -name "package-lock.json" -o -name "npm-shrinkwrap.json" \) -not -path "./node_modules/*")
+          if [ -n "$disallowed_files" ]; then
+            echo "Disallowed npm lockfile(s) found. This repository uses Yarn only:"
+            echo "$disallowed_files"
+            exit 1
+          fi
