@@ -52,6 +52,7 @@
     "build": "yarn clean && yarn lint && yarn test && yarn rollup",
     "clean": "rm -rf dist",
     "lint": "eslint src/**/*.ts",
+    "typecheck": "tsc --noEmit",
     "rollup": "rollup -c",
     "test": "vitest run",
     "test:watch": "vitest"
