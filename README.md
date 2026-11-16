@@ -245,6 +245,100 @@ card:
 
 `hass.formatEntityState` returns the state as Home Assistant shows it, translated into the user's language (for example `Partly cloudy`).
 
+## Recipes
+
+Short examples for common needs. Replace the entity ids with your own.
+
+### Icon and color that follow a state
+
+`config.card.entity` reads the entity from the card's own options, so the same card can be copied for another door by changing one line:
+
+```yaml
+type: custom:config-template-card
+entities:
+  - binary_sensor.front_door
+card:
+  type: tile
+  entity: binary_sensor.front_door
+  icon: "${states[config.card.entity].state === 'on' ? 'mdi:door-open' : 'mdi:door-closed'}"
+  color: "${states[config.card.entity].state === 'on' ? 'red' : 'green'}"
+```
+
+### Greeting by time of day
+
+```yaml
+type: custom:config-template-card
+variables:
+  HOUR: new Date().getHours()
+entities:
+  - sun.sun
+card:
+  type: markdown
+  content: "## Good ${HOUR < 12 ? 'morning' : HOUR < 18 ? 'afternoon' : 'evening'}, ${user.name}"
+```
+
+The card only re-renders when an entity in `entities` changes, so the greeting updates as `sun.sun` changes during the day.
+
+### A formatted attribute
+
+```yaml
+type: custom:config-template-card
+variables:
+  TEMP: Number(states['climate.living_room'].attributes.current_temperature).toFixed(1)
+entities:
+  - climate.living_room
+card:
+  type: entities
+  entities:
+    - entity: climate.living_room
+      name: Living room ${TEMP}°
+```
+
+### Batteries that need charging
+
+```yaml
+type: custom:config-template-card
+variables:
+  BATTERIES: Object.keys(states).filter((id) => states[id].attributes.device_class === 'battery')
+  LOW: BATTERIES.filter((id) => Number(states[id].state) < 20)
+entities: ${BATTERIES}
+card:
+  type: entities
+  title: "${LOW.length ? 'Low batteries: ' + LOW.length : 'All batteries OK'}"
+  entities: "${LOW.length ? LOW : [{ type: 'section', label: 'Nothing to charge' }]}"
+```
+
+The list of battery sensors rarely changes, so `BATTERIES` could also be a [static variable](#static-variables).
+
+### Total power from several sensors
+
+```yaml
+type: custom:config-template-card
+variables:
+  POWER_SENSORS: Object.keys(states).filter((id) => states[id].attributes.device_class === 'power')
+  TOTAL: POWER_SENSORS.reduce((sum, id) => sum + (Number(states[id].state) || 0), 0)
+entities: ${POWER_SENSORS}
+card:
+  type: markdown
+  content: Using **${Math.round(TOTAL)} W** right now
+```
+
+### Who's home
+
+The card type, title and rows all come from the same variables:
+
+```yaml
+type: custom:config-template-card
+variables:
+  PEOPLE: Object.keys(states).filter((id) => id.startsWith('person.'))
+  HOME: PEOPLE.filter((id) => states[id].state === 'home')
+entities: ${PEOPLE}
+card:
+  type: "${HOME.length ? 'glance' : 'entities'}"
+  title: "${HOME.length ? HOME.length + ' home' : 'Nobody home'}"
+  entities: ${PEOPLE}
+```
+
 ## Defining global functions in variables
 
 If you find yourself having to rewrite the same logic in multiple locations, you can define global methods inside Config Template Card's variables, which can be called anywhere within the scope of the card:
