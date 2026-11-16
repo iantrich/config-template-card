@@ -951,3 +951,198 @@ describe('static variables', () => {
     expect(render().title).toBe(2);
   });
 });
+
+describe('async templates', () => {
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+  const favorites = [
+    { title: 'Jazz', can_play: true },
+    { title: 'News', can_play: false },
+    { title: 'Rock', can_play: true },
+  ];
+
+  const setup = (config: Record<string, unknown>) => {
+    const card = new ConfigTemplateCard();
+    const internals = card as unknown as {
+      _config: unknown;
+      _helpers: unknown;
+      render: () => unknown;
+      _resolveEntities: (hass: unknown) => string[];
+    };
+    const createCardElement = vi.fn((_config: unknown) => document.createElement('div'));
+    const callWS = vi.fn(async () => ({ children: favorites }));
+    const hass = { states: { 'sun.sun': { state: 'above_horizon' } }, user: { name: 'Dev' }, callWS };
+    card.hass = hass as never;
+    internals._helpers = { createCardElement };
+    internals._config = { type: 'custom:config-template-card', entities: ['sun.sun'], ...config };
+    const lastConfig = () => createCardElement.mock.calls.at(-1)?.[0] as unknown as Record<string, unknown>;
+    return { internals, createCardElement, lastConfig, hass };
+  };
+
+  it('waits for a template that returns a Promise', async () => {
+    const { internals, createCardElement, lastConfig } = setup({
+      card: {
+        type: 'grid',
+        cards: "${hass.callWS({ type: 'media_player/browse_media' }).then((r) => r.children.length)}",
+      },
+    });
+
+    internals.render();
+    expect(createCardElement).not.toHaveBeenCalled();
+    await flush();
+    expect(lastConfig()).toEqual({ type: 'grid', cards: 3 });
+  });
+
+  it('supports `await` in an expression, as in malmeloo’s #149 example', async () => {
+    const { internals, lastConfig } = setup({
+      variables: {
+        getFavorites:
+          'async () => (await hass.callWS({ type: "media_player/browse_media" })).children.filter((f) => f.can_play)',
+        getCard: "(fav) => ({ type: 'button', name: fav.title })",
+      },
+      card: { type: 'grid', cards: '${(await getFavorites()).map(getCard)}' },
+    });
+
+    internals.render();
+    await flush();
+    expect(lastConfig()).toEqual({
+      type: 'grid',
+      cards: [
+        { type: 'button', name: 'Jazz' },
+        { type: 'button', name: 'Rock' },
+      ],
+    });
+  });
+
+  it('supports awaiting statements with an explicit return', async () => {
+    const { internals, lastConfig } = setup({
+      card: {
+        type: 'entities',
+        title: "${\n  const r = await hass.callWS({ type: 'x' });\n  return r.children.length + ' favorites';\n}",
+      },
+    });
+
+    internals.render();
+    await flush();
+    expect(lastConfig().title).toBe('3 favorites');
+  });
+
+  it('fills in variables that return a Promise before evaluating templates, including embedded ones', async () => {
+    const { internals, lastConfig } = setup({
+      variables: { FAVS: "hass.callWS({ type: 'x' }).then((r) => r.children)" },
+      card: { type: 'entities', title: '${FAVS.length} favorites, first: ${FAVS[0].title}', count: '${FAVS.length}' },
+    });
+
+    internals.render();
+    await flush();
+    expect(lastConfig()).toEqual({ type: 'entities', title: '3 favorites, first: Jazz', count: 3 });
+  });
+
+  it('logs a rejected Promise and uses null', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { internals, lastConfig } = setup({
+      card: { type: 'entities', title: "${Promise.reject(new Error('offline'))}", name: 'ok' },
+    });
+
+    internals.render();
+    await flush();
+    expect(lastConfig()).toEqual({ type: 'entities', title: null, name: 'ok' });
+    expect(errorSpy).toHaveBeenCalledWith(
+      'Failed to evaluate template expression',
+      expect.objectContaining({ error: expect.any(Error) }),
+    );
+  });
+
+  it('ignores async results in `entities` with a warning', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const { internals, hass } = setup({
+      entities: ['sun.sun', "${Promise.resolve('light.a')}"],
+      card: { type: 'entities' },
+    });
+
+    expect(internals._resolveEntities(hass)).toEqual(['sun.sun']);
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it('keeps synchronous templates synchronous, even when a string mentions await', () => {
+    const { internals, createCardElement, lastConfig } = setup({
+      card: { type: 'entities', title: "${ let s = 'please await'; s }", name: "${'await' + '!'}" },
+    });
+
+    internals.render();
+    expect(createCardElement).toHaveBeenCalledTimes(1);
+    expect(lastConfig()).toEqual({ type: 'entities', title: 'please await', name: 'await!' });
+  });
+
+  it('shows the async result once mounted', async () => {
+    const { internals } = setup({
+      card: { type: 'entities', title: "${hass.callWS({ type: 'x' }).then((r) => r.children[0].title)}" },
+    });
+    const card = internals as unknown as ConfigTemplateCard;
+    document.body.appendChild(card);
+    await card.updateComplete;
+    await flush();
+    await flush();
+
+    expect(card.shadowRoot?.querySelector('#card > div')).not.toBeNull();
+    card.remove();
+  });
+});
+
+describe('async templates with static variables and error fallbacks', () => {
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  const setup = (config: Record<string, unknown>) => {
+    const card = new ConfigTemplateCard();
+    vi.spyOn(card as unknown as { loadCardHelpers: () => void }, 'loadCardHelpers').mockImplementation(() => undefined);
+    card.setConfig({ type: 'custom:config-template-card', entities: ['sun.sun'], ...config } as never);
+    const internals = card as unknown as { _helpers: unknown; render: () => unknown };
+    const createCardElement = vi.fn((_config: unknown) => document.createElement('div'));
+    internals._helpers = { createCardElement };
+    const callWS = vi.fn(async () => ({ children: ['a', 'b', 'c'] }));
+    const render = () => {
+      card.hass = { states: { 'sun.sun': { state: 'x' } }, callWS } as never;
+      internals.render();
+    };
+    const lastConfig = () => createCardElement.mock.calls.at(-1)?.[0] as unknown as Record<string, unknown>;
+    return { render, lastConfig, callWS, createCardElement };
+  };
+
+  it('waits for async static variables, then rebuilds regular variables that use them', async () => {
+    const { render, lastConfig } = setup({
+      staticVariables: { ITEMS: "hass.callWS({ type: 'x' }).then((r) => r.children)" },
+      variables: { COUNT: 'ITEMS.length' },
+      card: { type: 'entities', title: '${COUNT} items: ${svars.ITEMS.join(",")}' },
+    });
+
+    render();
+    await flush();
+    await flush();
+    expect(lastConfig().title).toBe('3 items: a,b,c');
+  });
+
+  it('still evaluates async static variables only once', async () => {
+    const { render, lastConfig, callWS } = setup({
+      staticVariables: { ITEMS: "hass.callWS({ type: 'x' }).then((r) => r.children)" },
+      card: { type: 'entities', title: '${ITEMS.length}' },
+    });
+
+    render();
+    await flush();
+    await flush();
+    render();
+    render();
+    expect(lastConfig().title).toBe(3);
+    expect(callWS).toHaveBeenCalledTimes(1);
+  });
+
+  it('replaces a rejected Promise inside a string with <error>', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { render, lastConfig } = setup({
+      card: { type: 'entities', title: "Result: ${Promise.reject(new Error('offline'))}" },
+    });
+
+    render();
+    await flush();
+    expect(lastConfig().title).toBe('Result: <error>');
+  });
+});

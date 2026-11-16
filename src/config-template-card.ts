@@ -1,5 +1,6 @@
-import { LitElement, css, html, type TemplateResult, type PropertyValues } from 'lit';
+import { LitElement, css, html, nothing, type TemplateResult, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { until } from 'lit/directives/until.js';
 import { computeCardSize } from 'custom-card-helpers';
 import type { HomeAssistant, LovelaceCard } from 'custom-card-helpers';
 
@@ -17,6 +18,7 @@ import type {
 } from './types';
 import { CARD_VERSION } from './const';
 import { singleTemplateCode, splitTemplate } from './template';
+import { AsyncFunction, containsThenable, isThenable, resolveDeep } from './async';
 
 /** Named variables that are valid JS identifiers are also exposed as bare names in templates. */
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
@@ -26,6 +28,18 @@ const NESTED_CARD_TYPE = 'custom:config-template-card';
 const LITERAL_PREFIX = '$! ';
 /** Shown in place of a template inside a string when that template fails. */
 const EMBEDDED_ERROR_TEXT = '<error>';
+
+/** Compiles a function body, or returns undefined when it isn't valid JavaScript. */
+const tryCompile = (constructor: FunctionConstructor, params: string[], body: string): CompiledTemplate | undefined => {
+  try {
+    return new constructor(...params, body) as CompiledTemplate;
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return undefined;
+    }
+    throw error;
+  }
+};
 
 /* eslint no-console: 0 */
 console.info(
@@ -63,6 +77,8 @@ export class ConfigTemplateCard extends LitElement {
   private _initialized = false;
   private _contextCache?: EvalContext;
   private _statics?: StaticVars;
+  /** The last finished render, shown while an async render is pending. */
+  private _lastRendered?: TemplateResult;
   private _compiled = new Map<string, CompiledTemplate>();
 
   public setConfig(config: ConfigTemplateConfig): void {
@@ -99,6 +115,7 @@ export class ConfigTemplateCard extends LitElement {
     this._config = config;
     this._contextCache = undefined;
     this._statics = undefined;
+    this._lastRendered = undefined;
     this._compiled.clear();
 
     this.loadCardHelpers();
@@ -196,23 +213,63 @@ export class ConfigTemplateCard extends LitElement {
       return html``;
     }
 
-    const sourceConfig = this._config.card ?? this._config.row ?? this._config.element;
-    if (!sourceConfig) {
-      return html``;
+    const result = this._renderCard();
+    if (!isThenable(result)) {
+      this._lastRendered = result;
+      return result;
     }
 
-    // Evaluation builds new objects, so the stored config is never mutated.
-    const config = this._evaluateConfig(sourceConfig as ConfigObject, true);
-    const styleRecord = this._asStyleRecord(this._config.style ? this._evaluateConfig(this._config.style) : {});
+    // Keep showing the previous render until the async templates settle.
+    const settled = result.then((rendered) => {
+      this._lastRendered = rendered;
+      return rendered;
+    });
+    return html`${until(settled, this._lastRendered ?? nothing)}`;
+  }
 
-    const element = this._config.card
-      ? this._helpers.createCardElement(config)
-      : this._config.row
-        ? this._helpers.createRowElement(config)
-        : this._helpers.createHuiElement(config);
+  private _renderCard(): TemplateResult | Promise<TemplateResult> {
+    // Static variables that return Promises settle first; regular variables are then rebuilt.
+    const statics = this._getStatics(this.hass);
+    if (statics.pending) {
+      return statics.pending.then(() => this._renderCard());
+    }
+    return this._renderWithContext(this._getContext(this.hass));
+  }
+
+  private _renderWithContext(context: EvalContext): TemplateResult | Promise<TemplateResult> {
+    if (context.pending) {
+      // Every render using this context waits for the same async variables to settle.
+      return context.pending.then(() => this._renderWithContext({ ...context, pending: undefined }));
+    }
+
+    const sourceConfig = this._config?.card ?? this._config?.row ?? this._config?.element;
+    // Evaluation builds new objects, so the stored config is never mutated.
+    context.output = undefined;
+    const config = this._evaluateValue(sourceConfig, context, true) as ConfigObject;
+    context.output = undefined;
+    const style = this._config?.style ? this._evaluateValue(this._config.style, context) : {};
+
+    if (containsThenable(config) || containsThenable(style)) {
+      return Promise.all([resolveDeep(config), resolveDeep(style)]).then(([resolvedConfig, resolvedStyle]) =>
+        this._createCard(resolvedConfig as ConfigObject, resolvedStyle),
+      );
+    }
+
+    return this._createCard(config, style);
+  }
+
+  private _createCard(config: ConfigObject, style: unknown): TemplateResult {
+    const helpers = this._helpers as CardHelpers;
+    const styleRecord = this._asStyleRecord(style);
+
+    const element = this._config?.card
+      ? helpers.createCardElement(config)
+      : this._config?.row
+        ? helpers.createRowElement(config)
+        : helpers.createHuiElement(config);
     element.hass = this.hass;
 
-    if (this._config.element) {
+    if (this._config?.element) {
       if (styleRecord) {
         Object.keys(styleRecord).forEach((prop) => {
           this.style.setProperty(prop, styleRecord[prop]);
@@ -309,7 +366,15 @@ export class ConfigTemplateCard extends LitElement {
     const evaluated = this._evaluateValue(entities, context);
     const list = Array.isArray(evaluated) ? evaluated.flat(Infinity) : [evaluated];
 
-    return list.filter((entity) => entity !== undefined && entity !== null).map((entity) => String(entity));
+    if (list.some(isThenable)) {
+      console.warn(
+        'config-template-card: async templates are ignored in `entities`, which must be known synchronously',
+      );
+    }
+
+    return list
+      .filter((entity) => entity !== undefined && entity !== null && !isThenable(entity))
+      .map((entity) => String(entity));
   }
 
   private _evaluateTemplate(template: string, hassOverride?: HomeAssistant): unknown {
@@ -360,13 +425,13 @@ export class ConfigTemplateCard extends LitElement {
       return this._runCode(code, context, template, 'template', null);
     }
 
-    return splitTemplate(template)
-      .map((part) =>
-        part.kind === 'text'
-          ? part.value
-          : String(this._runCode(part.value, context, template, 'template', EMBEDDED_ERROR_TEXT)),
-      )
-      .join('');
+    const parts = splitTemplate(template).map((part) =>
+      part.kind === 'text' ? part.value : this._runCode(part.value, context, template, 'template', EMBEDDED_ERROR_TEXT),
+    );
+    if (parts.some(isThenable)) {
+      return Promise.all(parts).then((values) => values.map((value) => String(value)).join(''));
+    }
+    return parts.map((value) => String(value)).join('');
   }
 
   /**
@@ -404,7 +469,7 @@ export class ConfigTemplateCard extends LitElement {
       namedSources,
     };
 
-    this._evaluateSources(context, context.vars, 'variables');
+    context.pending = this._evaluateSources(context, context.vars, 'variables');
     return context;
   }
 
@@ -434,8 +499,15 @@ export class ConfigTemplateCard extends LitElement {
       namedSources,
     };
 
-    this._evaluateSources(context, svars, 'staticVariables');
+    const pending = this._evaluateSources(context, svars, 'staticVariables');
     const statics: StaticVars = { svars, names, values: context.values };
+    if (pending) {
+      statics.pending = pending.then(() => {
+        statics.pending = undefined;
+        // Regular variables built while static ones were pending saw Promises; rebuild them.
+        this._contextCache = undefined;
+      });
+    }
     if (hass) {
       this._statics = statics;
     }
@@ -455,20 +527,38 @@ export class ConfigTemplateCard extends LitElement {
     return { arraySources, namedSources };
   }
 
-  /** Evaluates the context's variable sources into `target`; each can use the ones before it. */
-  private _evaluateSources(context: EvalContext, target: EvalVars, label: string): void {
+  /**
+   * Evaluates the context's variable sources into `target`; each can use the ones before it.
+   * Variables that return a Promise are filled in once it settles, and the returned Promise settles
+   * when all of them have (undefined when none are async).
+   */
+  private _evaluateSources(context: EvalContext, target: EvalVars, label: string): Promise<void> | undefined {
+    const pending: Promise<void>[] = [];
+    const assign = (value: unknown, set: (resolved: unknown) => void): void => {
+      set(value);
+      if (isThenable(value)) {
+        pending.push(Promise.resolve(value).then(set));
+      }
+    };
+
     context.arraySources.forEach((source, index) => {
-      target.push(this._evaluateVariable(source, context, `${label}[${index}]`));
+      target.push(undefined);
+      assign(this._evaluateVariable(source, context, `${label}[${index}]`), (value) => {
+        target[index] = value;
+      });
     });
 
     Object.keys(context.namedSources).forEach((name) => {
-      const value = this._evaluateVariable(context.namedSources[name], context, name);
-      target[name] = value;
       const position = context.names.indexOf(name);
-      if (position >= 0) {
-        context.values[position] = value;
-      }
+      assign(this._evaluateVariable(context.namedSources[name], context, name), (value) => {
+        target[name] = value;
+        if (position >= 0) {
+          context.values[position] = value;
+        }
+      });
     });
+
+    return pending.length > 0 ? Promise.all(pending).then(() => undefined) : undefined;
   }
 
   private _evaluateVariable(source: unknown, context: EvalContext, variableName: string): unknown {
@@ -497,19 +587,7 @@ export class ConfigTemplateCard extends LitElement {
     fallback: unknown,
   ): unknown {
     const hass = context.hass;
-
-    try {
-      return this._compile(code, context.names).apply(this, [
-        hass,
-        hass?.states,
-        hass?.user,
-        context.vars,
-        context.svars,
-        context.config,
-        context.output,
-        ...context.values,
-      ]);
-    } catch (error) {
+    const logError = (error: unknown): void => {
       console.error('Failed to evaluate template expression', {
         template,
         expression: code,
@@ -519,6 +597,29 @@ export class ConfigTemplateCard extends LitElement {
         evaluatedVariables: context.vars,
         error,
       });
+    };
+
+    try {
+      const result = this._compile(code, context.names).apply(this, [
+        hass,
+        hass?.states,
+        hass?.user,
+        context.vars,
+        context.svars,
+        context.config,
+        context.output,
+        ...context.values,
+      ]);
+      if (isThenable(result)) {
+        // A rejected async template is logged and replaced, like a synchronous failure.
+        return Promise.resolve(result).catch((error: unknown) => {
+          logError(error);
+          return fallback;
+        });
+      }
+      return result;
+    } catch (error) {
+      logError(error);
       return fallback;
     }
   }
@@ -536,20 +637,24 @@ export class ConfigTemplateCard extends LitElement {
     }
 
     const params = ['hass', 'states', 'user', 'vars', 'svars', 'config', 'output', ...names];
-    let compiled: CompiledTemplate;
-
-    try {
-      compiled = new Function(...params, `return (\n${code}\n);`) as CompiledTemplate;
-    } catch (error) {
-      if (!(error instanceof SyntaxError)) {
-        throw error;
-      }
-
+    const usesAwait = /\bawait\b/.test(code);
+    const evalRunner = (): CompiledTemplate => {
       const runner = new Function(...params, CODE_PARAM, `return eval(${CODE_PARAM});`) as CompiledTemplate;
-      compiled = function (this: unknown, ...args: unknown[]) {
+      return function (this: unknown, ...args: unknown[]) {
         return runner.apply(this, [...args, code]);
       };
-    }
+    };
+
+    const compiled =
+      tryCompile(Function, params, `return (\n${code}\n);`) ??
+      // `${(await fetchThings()).map(...)}`: an expression that awaits (from #149).
+      (usesAwait ? tryCompile(AsyncFunction, params, `return (\n${code}\n);`) : undefined) ??
+      // Statements: eval returns the last statement's value, so no `return` is needed.
+      (tryCompile(Function, params, code) ? evalRunner() : undefined) ??
+      // Statements that await need an explicit `return`, since eval can't await.
+      (usesAwait ? tryCompile(AsyncFunction, params, code) : undefined) ??
+      // Not valid JavaScript: let eval report the SyntaxError when it runs.
+      evalRunner();
 
     this._compiled.set(key, compiled);
     return compiled;

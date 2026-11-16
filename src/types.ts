@@ -25,6 +25,8 @@ export interface StaticVars {
   svars: EvalVars;
   names: string[];
   values: unknown[];
+  /** Settles once every static variable that returned a Promise has its value. */
+  pending?: Promise<void>;
 }
 export type ConfigObject = Record<string, unknown>;
 export type CreatedElement = HTMLElement & { hass?: HomeAssistant };
@@ -44,6 +46,8 @@ export interface EvalContext {
   namedSources: Record<string, unknown>;
   /** The inner card config being built by the current render, exposed to templates as `output`. */
   output?: unknown;
+  /** Settles once every variable that returned a Promise has its value. */
+  pending?: Promise<void>;
 }
 
 export interface CardHelpers {

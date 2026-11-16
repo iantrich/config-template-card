@@ -301,6 +301,33 @@ Static variables are available as `svars` (`svars[0]` for a list, `svars.NAME` f
 
 Because they don't update, a static variable that reads `states` keeps the value from when the card loaded. In the example above the list of battery entities is static, while their states are read on every update.
 
+## Asynchronous templates
+
+A template or variable can return a Promise, for example to fetch data with `hass.callWS`. The card waits for it to settle before building the inner card, and keeps showing the previous version meanwhile. `await` works in a template expression, and statements that `await` need an explicit `return`:
+
+```yaml
+type: custom:config-template-card
+variables:
+  getFavorites: >-
+    async () => (await hass.callWS({
+      type: 'media_player/browse_media',
+      entity_id: 'media_player.kitchen',
+      media_content_id: 'object.item.audioItem.audioBroadcast',
+      media_content_type: 'favorites_folder',
+    })).children.filter((fav) => fav.can_play)
+entities:
+  - media_player.kitchen
+card:
+  type: grid
+  cards: "${(await getFavorites()).map((fav) => ({ type: 'button', name: fav.title }))}"
+```
+
+- A variable that returns a Promise is filled in before templates run, so templates can use its value directly. A variable that uses another async variable should `await` it.
+- A Promise that rejects is logged to the browser console and its value becomes `null`.
+- Static variables can be async too. They are awaited once, before regular variables run.
+- `entities` must be known right away, so async results there are ignored with a warning.
+- Templates that don't return a Promise behave exactly as before.
+
 ## Dashboard wide variables
 
 If you need to use the same variable in multiple cards, then instead of defining it in each card's `variables` you can do that once for the entire dashboard.
