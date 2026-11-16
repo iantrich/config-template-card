@@ -1146,3 +1146,122 @@ describe('async templates with static variables and error fallbacks', () => {
     expect(lastConfig().title).toBe('Result: <error>');
   });
 });
+
+describe('view-wide variables and shared entities (#171)', () => {
+  const dashboard = {
+    config_template_card_vars: { HOME: "'home'", WHERE: "'dashboard'" },
+    config_template_card_entities: ['sun.sun'],
+    views: [
+      { title: 'Overview', config_template_card_vars: { WHERE: "'overview'" } },
+      {
+        path: 'kitchen',
+        config_template_card_vars: { WHERE: "'kitchen'", ROOM: "HOME + '/kitchen'" },
+        config_template_card_staticVars: { S: "'static-kitchen'" },
+        config_template_card_entities: ['light.kitchen'],
+      },
+      { path: 'garage', config_template_card_vars: { WHERE: "'garage'" } },
+    ],
+  };
+
+  const states = {
+    'sun.sun': { state: 'above_horizon' },
+    'light.kitchen': { state: 'on' },
+    'light.garage': { state: 'off' },
+    'switch.card': { state: 'off' },
+  };
+
+  const setup = (url: string, config: Record<string, unknown>) => {
+    window.history.pushState(null, '', url);
+    const card = new ConfigTemplateCard();
+    const internals = card as unknown as {
+      _helpers: unknown;
+      render: () => unknown;
+      shouldUpdate: (props: Map<string, unknown>) => boolean;
+      getLovelacePanel: () => unknown;
+    };
+    vi.spyOn(internals, 'getLovelacePanel').mockReturnValue({ lovelace: { config: dashboard } });
+    vi.spyOn(card as unknown as { loadCardHelpers: () => void }, 'loadCardHelpers').mockImplementation(() => undefined);
+    card.setConfig({ type: 'custom:config-template-card', ...config } as never);
+    const createCardElement = vi.fn((_config: unknown) => document.createElement('div'));
+    internals._helpers = { createCardElement };
+    card.hass = { states, user: { name: 'Dev' } } as never;
+    const render = () => {
+      internals.render();
+      return createCardElement.mock.calls.at(-1)?.[0] as unknown as Record<string, unknown>;
+    };
+    const changed = (entityId: string) => {
+      const oldStates = { ...states, [entityId]: { state: 'changed' } };
+      return internals.shouldUpdate(new Map<string, unknown>([['hass', { states: oldStates }]]));
+    };
+    return { render, changed };
+  };
+
+  afterEach(() => {
+    window.history.pushState(null, '', '/');
+  });
+
+  it('loads dashboard, then view, then card variables, each overriding the one before', () => {
+    const { render } = setup('/ctc-dash/kitchen', {
+      entities: ['switch.card'],
+      card: { type: 'entities', title: '${WHERE} ${ROOM} ${MINE}' },
+      variables: { MINE: "ROOM + '/card'" },
+    });
+    expect(render().title).toBe('kitchen home/kitchen home/kitchen/card');
+
+    const cardWins = setup('/ctc-dash/kitchen', {
+      entities: ['switch.card'],
+      variables: { WHERE: "'card'" },
+      card: { type: 'entities', title: '${WHERE}' },
+    });
+    expect(cardWins.render().title).toBe('card');
+  });
+
+  it('finds the view by path, by index, or uses the first view when the URL has none', () => {
+    const card = { entities: ['switch.card'], card: { type: 'entities', title: '${WHERE}' } };
+    expect(setup('/ctc-dash/garage', card).render().title).toBe('garage');
+    expect(setup('/ctc-dash/1', card).render().title).toBe('kitchen');
+    expect(setup('/ctc-dash', card).render().title).toBe('overview');
+    expect(setup('/ctc-dash/unknown', card).render().title).toBe('dashboard');
+  });
+
+  it('only applies a view’s variables on that view', () => {
+    const { render } = setup('/ctc-dash/garage', {
+      entities: ['switch.card'],
+      card: { type: 'entities', title: "${typeof ROOM === 'undefined' ? 'no room' : ROOM}" },
+    });
+    expect(render().title).toBe('no room');
+  });
+
+  it('supports view-wide static variables', () => {
+    const { render } = setup('/ctc-dash/kitchen', {
+      entities: ['switch.card'],
+      card: { type: 'entities', title: '${S} ${svars.S}' },
+    });
+    expect(render().title).toBe('static-kitchen static-kitchen');
+  });
+
+  it('watches dashboard and view entities as well as the card’s own', () => {
+    const { changed } = setup('/ctc-dash/kitchen', { entities: ['switch.card'], card: { type: 'entities' } });
+    expect(changed('sun.sun')).toBe(true);
+    expect(changed('light.kitchen')).toBe(true);
+    expect(changed('switch.card')).toBe(true);
+    expect(changed('light.garage')).toBe(false);
+  });
+
+  it('still requires entities when neither the card, view nor dashboard sets them', () => {
+    const card = new ConfigTemplateCard();
+    vi.spyOn(card as unknown as { getLovelacePanel: () => unknown }, 'getLovelacePanel').mockReturnValue({
+      lovelace: { config: { views: [{ path: 'plain' }] } },
+    });
+    window.history.pushState(null, '', '/ctc-dash/plain');
+    expect(() => card.setConfig({ type: 'custom:config-template-card', card: { type: 'entities' } } as never)).toThrow(
+      'No entities defined',
+    );
+  });
+
+  it('lets a card leave out `entities` when the dashboard or view provides them', () => {
+    const { render, changed } = setup('/ctc-dash/kitchen', { card: { type: 'entities', title: '${WHERE}' } });
+    expect(render().title).toBe('kitchen');
+    expect(changed('light.kitchen')).toBe(true);
+  });
+});

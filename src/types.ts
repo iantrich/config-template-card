@@ -7,8 +7,11 @@ import type {
 
 export interface ConfigTemplateConfig {
   type: string;
-  /** Entity ids to watch, any of which may be a template, or one template that returns a list. */
-  entities: string[] | string;
+  /**
+   * Entity ids to watch, any of which may be a template, or one template that returns a list.
+   * Optional when the dashboard or view sets `config_template_card_entities`.
+   */
+  entities?: string[] | string;
   variables?: unknown[] | { [key: string]: unknown };
   /** Variables evaluated once when the card loads, available as `svars` and by name. */
   staticVariables?: unknown[] | { [key: string]: unknown };
@@ -56,11 +59,21 @@ export interface CardHelpers {
   createHuiElement(config: unknown): CreatedElement;
 }
 
+/** Keys a dashboard or one of its views can set for every config-template-card on it. */
+export interface SharedTemplateConfig {
+  config_template_card_vars?: unknown;
+  config_template_card_staticVars?: unknown;
+  config_template_card_entities?: unknown;
+}
+
+export interface LovelaceViewWithVars extends SharedTemplateConfig {
+  path?: string;
+}
+
 export interface LovelacePanelWithVars extends Element {
   lovelace?: {
-    config?: {
-      config_template_card_vars?: unknown;
-      config_template_card_staticVars?: unknown;
+    config?: SharedTemplateConfig & {
+      views?: LovelaceViewWithVars[];
     };
   };
 }
