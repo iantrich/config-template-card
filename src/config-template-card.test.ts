@@ -332,7 +332,7 @@ describe('ConfigTemplateCard logic', () => {
     expect(value).toBe('GLOBAL-LOCAL');
   });
 
-  it('_evaluateTemplate logs context and rethrows when expression evaluation fails', () => {
+  it('_evaluateTemplate logs context and returns null when expression evaluation fails', () => {
     card.hass = {
       states: {},
     } as never;
@@ -348,13 +348,13 @@ describe('ConfigTemplateCard logic', () => {
       return undefined;
     });
 
-    expect(() => {
-      (
-        card as unknown as {
-          _evaluateTemplate: (template: string) => unknown;
-        }
-      )._evaluateTemplate('${missing.value}');
-    }).toThrow();
+    const value = (
+      card as unknown as {
+        _evaluateTemplate: (template: string) => unknown;
+      }
+    )._evaluateTemplate('${missing.value}');
+
+    expect(value).toBeNull();
 
     expect(errorSpy).toHaveBeenCalledWith(
       'Failed to evaluate template expression',
@@ -512,10 +512,11 @@ describe('ConfigTemplateCard beta regressions', () => {
       expect(internals.shouldUpdate(changed)).toBe(true);
     });
 
-    it('renders instead of throwing when a watched entity template fails', () => {
-      vi.spyOn(console, 'error').mockImplementation(() => undefined);
-      configure({ entities: ['${missing.entity}'] });
-      expect(internals.shouldUpdate(unchangedHass())).toBe(true);
+    it('ignores a watched entity template that fails instead of throwing', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      configure({ entities: ['${missing.entity}', 'sun.sun'] });
+      expect(internals.shouldUpdate(unchangedHass())).toBe(false);
+      expect(errorSpy).toHaveBeenCalled();
     });
 
     it('supports entities given as one template that returns a list (#191)', () => {
@@ -565,8 +566,12 @@ describe('ConfigTemplateCard beta regressions', () => {
     });
 
     it('does not mistake runtime SyntaxErrors for multi-statement code', () => {
-      vi.spyOn(console, 'error').mockImplementation(() => undefined);
-      expect(() => evaluate("${JSON.parse('{bad')}")).toThrow(SyntaxError);
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      expect(evaluate("${JSON.parse('{bad')}")).toBeNull();
+      expect(errorSpy).toHaveBeenCalledWith(
+        'Failed to evaluate template expression',
+        expect.objectContaining({ error: expect.any(SyntaxError) }),
+      );
     });
   });
 
@@ -741,5 +746,46 @@ describe('literal prefix', () => {
   it('only treats the exact prefix at the start as literal', () => {
     const config = renderWith({ card: { type: 'entities', a: 'cost $! ${1 + 1}', b: '$!${1 + 1}' } });
     expect(config).toEqual({ type: 'entities', a: 'cost $! 2', b: '$!2' });
+  });
+});
+
+describe('template errors keep the card rendering', () => {
+  const renderWith = (config: Record<string, unknown>) => {
+    const card = new ConfigTemplateCard();
+    const internals = card as unknown as { _config: unknown; _helpers: unknown; render: () => unknown };
+    const createCardElement = vi.fn((_config: unknown) => document.createElement('div'));
+    card.hass = { states: { 'sun.sun': { state: 'above_horizon' } }, user: { name: 'Dev' } } as never;
+    internals._helpers = { createCardElement };
+    internals._config = { type: 'custom:config-template-card', entities: ['sun.sun'], ...config };
+    const result = internals.render();
+    return { result, config: createCardElement.mock.calls[0]?.[0] as unknown as Record<string, unknown> };
+  };
+
+  it('replaces a failing whole-value template with null and a failing embedded one with <error>', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { result, config } = renderWith({
+      card: {
+        type: 'entities',
+        title: "${states['sensor.missing'].state}",
+        entities: [{ entity: 'sun.sun', name: "Sun is ${states['sun.sun'].state}, ${states['sensor.missing'].state}" }],
+      },
+    });
+
+    expect(result).toBeDefined();
+    expect(config).toEqual({
+      type: 'entities',
+      title: null,
+      entities: [{ entity: 'sun.sun', name: 'Sun is above_horizon, <error>' }],
+    });
+  });
+
+  it('keeps rendering when a variable fails, with the variable set to null', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { config } = renderWith({
+      variables: { BROKEN: "states['sensor.missing'].state", OK: "states['sun.sun'].state" },
+      card: { type: 'entities', title: '${BROKEN === null ? "fallback" : BROKEN} / ${OK}' },
+    });
+
+    expect(config.title).toBe('fallback / above_horizon');
   });
 });
