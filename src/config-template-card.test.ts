@@ -687,3 +687,14 @@ describe('nested config-template-cards', () => {
     });
   });
 });
+
+describe('layout', () => {
+  it('lets the inner card fill the height given by stacks and grids (#158)', () => {
+    const styles = [ConfigTemplateCard.styles].flat() as { cssText: string }[];
+    const cssText = styles
+      .map((style) => style.cssText)
+      .join('\n')
+      .replace(/\s+/g, ' ');
+    expect(cssText).toContain('#card { height: 100%; }');
+  });
+});

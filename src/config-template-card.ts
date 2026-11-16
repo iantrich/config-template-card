@@ -1,4 +1,4 @@
-import { LitElement, html, type TemplateResult, type PropertyValues } from 'lit';
+import { LitElement, css, html, type TemplateResult, type PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { computeCardSize } from 'custom-card-helpers';
 import type { HomeAssistant, LovelaceCard } from 'custom-card-helpers';
@@ -32,6 +32,14 @@ console.info(
 @customElement('config-template-card')
 export class ConfigTemplateCard extends LitElement {
   private static readonly _HELPERS_TIMEOUT_MS = 10000;
+
+  // Let the inner card fill the height a stack, grid or sections layout gives this card (#158).
+  // Where the host has no fixed height (rows, picture elements), this resolves to the content height.
+  static styles = css`
+    #card {
+      height: 100%;
+    }
+  `;
   private _hass?: HomeAssistant;
 
   @property({ attribute: false })
