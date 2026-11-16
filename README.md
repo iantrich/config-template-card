@@ -298,6 +298,22 @@ What this example does:
 
 Both arrays and objects are supported, just like in card's local variables. It is allowed to mix the two types, i.e. use an array in dashboard variables and an object in card variables, or the other way around. If both definitions are arrays, then dashboard variables are put first in `vars`. In the mixed mode, `vars` have array indices and as well as variable names.
 
+### Passing text through untouched
+
+Start a value with `$! ` (dollar, exclamation mark, space) to pass it through as plain text, with the prefix removed. Use this when a value contains `${...}` meant for the inner card's own templating, or a variable should hold text rather than run as code:
+
+```yaml
+type: custom:config-template-card
+variables:
+  PATTERN: $! states['sun.sun'].state
+entities:
+  - sun.sun
+card:
+  type: custom:some-card
+  # The inner card receives the text "${value} items", not an evaluated template
+  label: $! ${value} items
+```
+
 ## When you might not need config-template-card
 
 - **Stacks:** wrap only the cards that use templates, not the whole stack, so the other cards are not re-created on every update:
