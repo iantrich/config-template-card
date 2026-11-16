@@ -31,24 +31,48 @@ Use [HACS](https://hacs.xyz) or follow this [guide](https://github.com/thomaslov
 | --------- | ------ | ------------ | ---------------------------------------------------------------------------------------------------------------- |
 | type      | string | **Required** | `custom:config-template-card`                                                                                    |
 | entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here, either per item or as one template that returns a list |
-| variables | list   | **Optional** | List of variables, which can be templates, that can be used in your `config` and indexed using `vars` or by name |
-| card      | object | **Optional** | Card configuration. (A card, row, or element configuaration must be provided)                                    |
-| row       | object | **Optional** | Row configuration. (A card, row, or element configuaration must be provided)                                     |
-| element   | object | **Optional** | Element configuration. (A card, row, or element configuaration must be provided)                                 |
-| style     | object | **Optional** | Style configuration.                                                                                             |
+| variables | list or object | **Optional** | Variables, which can be templates, that can be used in your templates and indexed using `vars` or by name |
+| card      | object | **Optional**\* | Card configuration |
+| row       | object | **Optional**\* | Row configuration, for use inside an Entities card |
+| element   | object | **Optional**\* | Element configuration, for use inside a Picture elements card or as a badge |
+| style     | object | **Optional** | Style configuration for the wrapper (for example `top`/`left` inside a Picture elements card) |
+
+\* One of `card`, `row` or `element` must be provided.
+
+The card re-renders when its own configuration changes or when any entity listed in `entities` changes. Entities that are not listed do not trigger an update, even if a template reads them.
+
+### Defining `variables`
+
+`variables` may be a list:
+
+```yaml
+variables:
+  - states['input_number.level'].state
+  - Number(vars[0]) * 2
+```
+
+or an object:
+
+```yaml
+variables:
+  LEVEL: states['input_number.level'].state
+  DOUBLE: Number(LEVEL) * 2
+```
+
+Either way, a variable can use the variables defined before it: `vars[0]` in a list, or the earlier name (also `vars['LEVEL']`) in an object.
 
 ### Available variables for templating
 
 | Variable    | Description                                                                                                                                                                                                                                                                                                                                                                                           |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `this.hass` | The [hass](https://developers.home-assistant.io/docs/frontend/data/) object                                                                                                                                                                                                                                                                                                                           |
+| `hass`      | The [hass](https://developers.home-assistant.io/docs/frontend/data/) object (also available as `this.hass`)                                                                                                                                                                                                                                                                                                                           |
 | `states`    | The [states](https://developers.home-assistant.io/docs/frontend/data/#hassstates) object                                                                                                                                                                                                                                                                                                              |
 | `user`      | The [user](https://developers.home-assistant.io/docs/frontend/data/#hassuser) object                                                                                                                                                                                                                                                                                                                  |
 | `vars`      | Defined by `variables` configuration and accessible in your templates to help clean them up. If `variables` in the configuration is a yaml list, then `vars` is an array starting at the 0th index as your firstly defined variable. If `variables` is an object in the configuration, then `vars` is a string-indexed map and you can also access the variables by name without using `vars` at all. |
 ## Examples
 
 ```yaml
-type: 'custom:config-template-card'
+type: custom:config-template-card
 variables:
   LIGHT_STATE: states['light.bed_light'].state
   GARAGE_STATE: states['cover.garage_door'].state
@@ -81,7 +105,7 @@ What this example does:
 ### Templated entities example
 
 ```yaml
-type: 'custom:config-template-card'
+type: custom:config-template-card
 variables:
   - states['sensor.light']
 entities:
@@ -99,13 +123,40 @@ What this example does:
 - Renders a `card` target (`light` card) whose `entity` and `name` come from templates.
 - Shows a common pattern where one sensor (or helper) points to the active entity to display.
 
+### Entities list from a template
+
+The whole `entities` list can also be one template that returns a list, which is handy when the same list is used for the watch list and the card:
+
+```yaml
+type: custom:config-template-card
+variables:
+  LIGHTS: Object.keys(states).filter((id) => id.startsWith('light.'))
+entities: ${LIGHTS}
+card:
+  type: entities
+  entities: ${LIGHTS}
+```
+
+To match part of an entity id, use `includes`. Lists can be combined with `concat`:
+
+```yaml
+type: custom:config-template-card
+variables:
+  BATTERIES: Object.keys(states).filter((id) => id.startsWith('sensor.') && id.includes('battery'))
+  SWITCHES: Object.keys(states).filter((id) => id.startsWith('input_boolean.'))
+entities: ${BATTERIES.concat(SWITCHES, ['sun.sun'])}
+card:
+  type: entities
+  entities: ${BATTERIES.concat(SWITCHES, ['sun.sun'])}
+```
+
 ### Picture-elements card example
 
 ```yaml
 type: picture-elements
 image: https://upload.wikimedia.org/wikipedia/commons/4/49/Koala_climbing_tree.jpg
 elements:
-  - type: 'custom:config-template-card'
+  - type: custom:config-template-card
     variables:
       - states['light.bed_light'].state
     entities:
@@ -131,12 +182,14 @@ What this example does:
 
 Note: The `style` object on the element configuration is applied to the element itself, the `style` object on the `config-template-card` is applied to the surrounding card, both can contain templated values. For example, in order to place the card properly, the `top` and `left` attributes must always be configured on the `config-template-card`.
 
+Wrap the individual elements that need templates rather than the whole Picture elements card, so only those elements re-render when their entities change.
+
 ### Entities card example
 
 ```yaml
 type: entities
 entities:
-  - type: 'custom:config-template-card'
+  - type: custom:config-template-card
     variables:
       - states['light.bed_light'].state
     entities:
@@ -154,12 +207,46 @@ What this example does:
 - Uses one watched entity and one array variable to keep logic minimal.
 - Dynamically changes the section label so the row text reflects live entity state.
 
+### Badge example
+
+```yaml
+badges:
+  - type: custom:config-template-card
+    variables:
+      SUN: states['sun.sun'].state
+    entities:
+      - sun.sun
+    element:
+      type: custom:hui-entity-badge
+      entity: sun.sun
+      show_name: true
+      name: "${SUN === 'above_horizon' ? 'Day' : 'Night'}"
+```
+
+A badge uses `element` with the badge's element name (`custom:hui-entity-badge` for the standard entity badge).
+
+### Markdown card example
+
+JavaScript templates and the Markdown card's own Jinja templates can be combined:
+
+```yaml
+type: custom:config-template-card
+entities:
+  - weather.home
+card:
+  type: markdown
+  content: |
+    ### {{ state_attr('weather.home', 'temperature') }}° - ${hass.formatEntityState(states['weather.home'])}
+```
+
+`hass.formatEntityState` returns the state as Home Assistant shows it, translated into the user's language (for example `Partly cloudy`).
+
 ## Defining global functions in variables
 
 If you find yourself having to rewrite the same logic in multiple locations, you can define global methods inside Config Template Card's variables, which can be called anywhere within the scope of the card:
 
 ```yaml
-type: 'custom:config-template-card'
+type: custom:config-template-card
 variables:
   setTempMessage: |
     temp => {
@@ -210,6 +297,25 @@ What this example does:
 - When both dashboard and local variables are arrays, dashboard entries come first in `vars`.
 
 Both arrays and objects are supported, just like in card's local variables. It is allowed to mix the two types, i.e. use an array in dashboard variables and an object in card variables, or the other way around. If both definitions are arrays, then dashboard variables are put first in `vars`. In the mixed mode, `vars` have array indices and as well as variable names.
+
+## When you might not need config-template-card
+
+- **Stacks:** wrap only the cards that use templates, not the whole stack, so the other cards are not re-created on every update:
+
+  ```yaml
+  type: vertical-stack
+  cards:
+    - type: custom:config-template-card
+      variables: ...
+      entities: ...
+      card:
+        type: entities
+        # ... uses templates
+    - type: entities
+      # ... no templates needed
+  ```
+
+- **Styling only:** if you only need to change CSS based on state, [card-mod](https://github.com/thomasloven/lovelace-card-mod) with Jinja templates can do it without re-creating the card.
 
 ## Writing templates
 
