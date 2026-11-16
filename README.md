@@ -160,26 +160,26 @@ If you find yourself having to rewrite the same logic in multiple locations, you
 
 ```yaml
 type: 'custom:config-template-card'
-  variables:
-    setTempMessage: |
-      temp => {
-        if (temp <= 19) {
-            return 'Quick, get a blanket!';
-        }
-        else if (temp >= 20 && temp <= 22) {
-          return 'Cozy!';
-        }
-        return 'It's getting hot in here...';
+variables:
+  setTempMessage: |
+    temp => {
+      if (temp < 20) {
+        return 'Quick, get a blanket!';
       }
-    currentTemp: states['climate.ecobee'].attributes.current_temperature
+      if (temp <= 22) {
+        return 'Cozy!';
+      }
+      return "It's getting hot in here...";
+    }
+  currentTemp: states['climate.ecobee'].attributes.current_temperature
+entities:
+  - climate.ecobee
+card:
+  type: entities
   entities:
-    - climate.ecobee
-  card:
-    type: entities
-    entities:
-      - entity: climate.ecobee
-        name: '${ setTempMessage(currentTemp) }'
-````
+    - entity: climate.ecobee
+      name: '${ setTempMessage(currentTemp) }'
+```
 
 What this example does:
 
@@ -187,6 +187,7 @@ What this example does:
 - Demonstrates that templates can call custom functions, not just simple expressions.
 - Uses `entities` to watch only what the template depends on (`climate.ecobee`).
 - Keeps card config clean by moving conditional text logic into a reusable variable function.
+- Uses double quotes for `"It's getting hot in here..."`, since an apostrophe inside a single-quoted JavaScript string ends the string early.
 
 ## Dashboard wide variables
 
