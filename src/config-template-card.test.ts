@@ -789,3 +789,83 @@ describe('template errors keep the card rendering', () => {
     expect(config.title).toBe('fallback / above_horizon');
   });
 });
+
+describe('config and output template variables', () => {
+  const states = {
+    'binary_sensor.door': { state: 'on' },
+    'sensor.phone_battery': { state: '80' },
+    'sensor.tablet_battery': { state: '40' },
+    'sun.sun': { state: 'above_horizon' },
+  };
+
+  const setup = (config: Record<string, unknown>) => {
+    const card = new ConfigTemplateCard();
+    const internals = card as unknown as {
+      _config: unknown;
+      _helpers: unknown;
+      render: () => unknown;
+      _resolveEntities: (hass: unknown) => string[];
+    };
+    const createCardElement = vi.fn((_config: unknown) => document.createElement('div'));
+    const hass = { states, user: { name: 'Dev' } };
+    card.hass = hass as never;
+    internals._helpers = { createCardElement };
+    internals._config = { type: 'custom:config-template-card', entities: ['sun.sun'], ...config };
+    const render = () => {
+      internals.render();
+      return createCardElement.mock.calls.at(-1)?.[0] as unknown as Record<string, unknown>;
+    };
+    return { render, resolveEntities: () => internals._resolveEntities(hass) };
+  };
+
+  it('exposes the card config as `config` (#160: abstract the entity)', () => {
+    const { render } = setup({
+      card: {
+        type: 'entity',
+        entity: 'binary_sensor.door',
+        name: "${states[config.card.entity].state === 'on' ? 'Activated' : 'Deactivated'}",
+      },
+    });
+
+    expect(render().name).toBe('Activated');
+  });
+
+  it('reads other card options and custom top-level keys from `config` (#169, #168)', () => {
+    const { render } = setup({
+      secret_option: 'from a top-level key',
+      card: {
+        type: 'history-graph',
+        title: "${Number(config.card.hours_to_show) >= 24 ? 'day or more' : 'less than a day'}",
+        hours_to_show: 4,
+        name: '${config.secret_option}',
+      },
+    });
+
+    const config = render();
+    expect(config.title).toBe('less than a day');
+    expect(config.name).toBe('from a top-level key');
+  });
+
+  it('exposes the card config built so far as `output` (#169)', () => {
+    const { render } = setup({
+      variables: { ENTITIES: "Object.keys(states).filter((id) => id.includes('battery'))" },
+      card: { type: 'entities', entities: '${ENTITIES}', title: 'total: ${output.entities.length}' },
+    });
+
+    expect(render()).toEqual({
+      type: 'entities',
+      entities: ['sensor.phone_battery', 'sensor.tablet_battery'],
+      title: 'total: 2',
+    });
+  });
+
+  it('does not leak a previous render’s `output` into the watched entities', () => {
+    const { render, resolveEntities } = setup({
+      entities: ["${output === undefined ? 'sun.sun' : 'sensor.stale'}"],
+      card: { type: 'entities', title: 'x' },
+    });
+
+    render();
+    expect(resolveEntities()).toEqual(['sun.sun']);
+  });
+});

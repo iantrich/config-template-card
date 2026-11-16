@@ -32,6 +32,8 @@ export interface EvalContext {
   values: unknown[];
   arraySources: unknown[];
   namedSources: Record<string, unknown>;
+  /** The inner card config being built by the current render, exposed to templates as `output`. */
+  output?: unknown;
 }
 
 export interface CardHelpers {
