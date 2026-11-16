@@ -1,10 +1,7 @@
 default_config:
-lovelace:
-  mode: yaml
-  resources:
-    - url: http://127.0.0.1:5000/config-template-card.js
-      type: module
 demo:
+homeassistant_alerts:
+  enabled: false
 sensor:
   - platform: template
     sensors:
