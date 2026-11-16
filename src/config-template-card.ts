@@ -192,7 +192,7 @@ export class ConfigTemplateCard extends LitElement {
     }
 
     // Evaluation builds new objects, so the stored config is never mutated.
-    const config = this._evaluateConfig(sourceConfig as ConfigObject);
+    const config = this._evaluateConfig(sourceConfig as ConfigObject, true);
     const styleRecord = this._asStyleRecord(this._config.style ? this._evaluateConfig(this._config.style) : {});
 
     const element = this._config.card
@@ -274,8 +274,14 @@ export class ConfigTemplateCard extends LitElement {
     return style;
   }
 
-  private _evaluateConfig(config: ConfigObject): ConfigObject {
-    return this._evaluateValue(config, this._getContext(this.hass)) as ConfigObject;
+  /**
+   * Evaluates a config object. With `asOutput`, the result is exposed to its own templates as
+   * `output` while it is built, so a template can read keys evaluated before it (from #159).
+   */
+  private _evaluateConfig(config: ConfigObject, asOutput = false): ConfigObject {
+    const context = this._getContext(this.hass);
+    context.output = undefined;
+    return this._evaluateValue(config, context, asOutput) as ConfigObject;
   }
 
   /**
@@ -288,7 +294,9 @@ export class ConfigTemplateCard extends LitElement {
       return [];
     }
 
-    const evaluated = this._evaluateValue(entities, this._getContext(hass));
+    const context = this._getContext(hass);
+    context.output = undefined;
+    const evaluated = this._evaluateValue(entities, context);
     const list = Array.isArray(evaluated) ? evaluated.flat(Infinity) : [evaluated];
 
     return list.filter((entity) => entity !== undefined && entity !== null).map((entity) => String(entity));
@@ -302,7 +310,7 @@ export class ConfigTemplateCard extends LitElement {
     return this._evaluateString(template, this._getContext(hassOverride ?? this.hass));
   }
 
-  private _evaluateValue(value: unknown, context: EvalContext): unknown {
+  private _evaluateValue(value: unknown, context: EvalContext, isOutputRoot = false): unknown {
     if (Array.isArray(value)) {
       return value.map((item) => this._evaluateValue(item, context));
     }
@@ -314,6 +322,9 @@ export class ConfigTemplateCard extends LitElement {
       }
 
       const result: ConfigObject = {};
+      if (isOutputRoot) {
+        context.output = result;
+      }
       Object.entries(value as ConfigObject).forEach(([key, entry]) => {
         result[key] = this._evaluateValue(entry, context);
       });
@@ -438,6 +449,8 @@ export class ConfigTemplateCard extends LitElement {
         hass?.states,
         hass?.user,
         context.vars,
+        context.config,
+        context.output,
         ...context.values,
       ]);
     } catch (error) {
@@ -466,7 +479,7 @@ export class ConfigTemplateCard extends LitElement {
       return cached;
     }
 
-    const params = ['hass', 'states', 'user', 'vars', ...names];
+    const params = ['hass', 'states', 'user', 'vars', 'config', 'output', ...names];
     let compiled: CompiledTemplate;
 
     try {

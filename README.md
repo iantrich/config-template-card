@@ -69,6 +69,8 @@ Either way, a variable can use the variables defined before it: `vars[0]` in a l
 | `states`    | The [states](https://developers.home-assistant.io/docs/frontend/data/#hassstates) object                                                                                                                                                                                                                                                                                                              |
 | `user`      | The [user](https://developers.home-assistant.io/docs/frontend/data/#hassuser) object                                                                                                                                                                                                                                                                                                                  |
 | `vars`      | Defined by `variables` configuration and accessible in your templates to help clean them up. If `variables` in the configuration is a yaml list, then `vars` is an array starting at the 0th index as your firstly defined variable. If `variables` is an object in the configuration, then `vars` is a string-indexed map and you can also access the variables by name without using `vars` at all. |
+| `config`    | This card's own configuration, before templates are evaluated. For example `config.card.entity` is the inner card's entity, and custom top-level keys are available too |
+| `output`    | The inner card's configuration built so far. Keys are evaluated in order, so a template can read keys above it, for example `output.entities.length` |
 ## Examples
 
 ```yaml
@@ -362,6 +364,46 @@ The same rules apply to `variables`, so a variable can hold several statements o
 
 A `custom:config-template-card` nested inside another one (for example inside a `vertical-stack`) evaluates its own templates with its own `variables`; the outer card leaves that part of its config untouched. Use dashboard-wide variables for values both need.
 
+### Using `config` and `output`
+
+`config` lets a template refer to the card's own options instead of repeating them, which helps when the same card is copied for several entities:
+
+```yaml
+type: custom:config-template-card
+entities:
+  - binary_sensor.door
+card:
+  type: entity
+  entity: binary_sensor.door
+  name: "${states[config.card.entity].state === 'on' ? 'Open' : 'Closed'}"
+```
+
+`output` reads values that were already evaluated earlier in the same card:
+
+```yaml
+type: custom:config-template-card
+variables:
+  BATTERIES: Object.keys(states).filter((id) => id.includes('battery'))
+entities: ${BATTERIES}
+card:
+  type: entities
+  entities: ${BATTERIES}
+  title: "Batteries: ${output.entities.length}"
+```
+
+In a YAML-mode dashboard, `!secret` values can be passed in through a custom top-level key and read with `config`:
+
+```yaml
+type: custom:config-template-card
+secret_option: !secret some_secret
+entities:
+  - sun.sun
+card:
+  type: entities
+  entities:
+    - entity: sun.sun
+      name: ${config.secret_option}
+```
 ### When a template fails
 
 If a template or variable throws an error (for example reading `.state` of an entity that doesn't exist), the error is logged to the browser console with the template and variables involved, and the card keeps rendering:
