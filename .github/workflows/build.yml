@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: Test build
+    name: Lint, test and build
     runs-on: ubuntu-latest
     env:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: 0
