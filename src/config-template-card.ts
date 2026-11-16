@@ -11,6 +11,7 @@ import type {
   EvalContext,
   EvalVars,
   LovelacePanelWithVars,
+  StaticVars,
   TemplateVars,
   WindowWithCardHelpers,
 } from './types';
@@ -61,6 +62,7 @@ export class ConfigTemplateCard extends LitElement {
   @state() private _helpers?: CardHelpers;
   private _initialized = false;
   private _contextCache?: EvalContext;
+  private _statics?: StaticVars;
   private _compiled = new Map<string, CompiledTemplate>();
 
   public setConfig(config: ConfigTemplateConfig): void {
@@ -96,6 +98,7 @@ export class ConfigTemplateCard extends LitElement {
 
     this._config = config;
     this._contextCache = undefined;
+    this._statics = undefined;
     this._compiled.clear();
 
     this.loadCardHelpers();
@@ -117,8 +120,15 @@ export class ConfigTemplateCard extends LitElement {
 
   private getLovelaceConfig(): TemplateVars | undefined {
     const panel = this.getLovelacePanel() as LovelacePanelWithVars | null;
-    const localVars = panel?.lovelace?.config?.config_template_card_vars;
+    return this._asVariables(panel?.lovelace?.config?.config_template_card_vars);
+  }
 
+  private getLovelaceStaticVars(): TemplateVars | undefined {
+    const panel = this.getLovelacePanel() as LovelacePanelWithVars | null;
+    return this._asVariables(panel?.lovelace?.config?.config_template_card_staticVars);
+  }
+
+  private _asVariables(localVars: unknown): TemplateVars | undefined {
     if (Array.isArray(localVars)) {
       return localVars as unknown[];
     }
@@ -375,45 +385,90 @@ export class ConfigTemplateCard extends LitElement {
   }
 
   private _buildContext(hass: HomeAssistant | undefined): EvalContext {
-    const vars: EvalVars = [] as unknown as EvalVars;
-    const arraySources: unknown[] = [];
-    const namedSources: Record<string, unknown> = {};
-
+    const statics = this._getStatics(hass);
     // Dashboard-wide variables first, so card variables can build on (and override) them.
-    for (const source of [this.getLovelaceConfig(), this._config?.variables]) {
-      if (Array.isArray(source)) {
-        arraySources.push(...source);
-      } else if (source && typeof source === 'object') {
-        Object.assign(namedSources, source);
-      }
-    }
+    const { arraySources, namedSources } = this._collectSources([this.getLovelaceConfig(), this._config?.variables]);
 
-    const names = Object.keys(namedSources).filter((name) => IDENTIFIER.test(name));
+    // Bare names cover static and regular variables; a regular variable overrides a static one.
+    const names = [
+      ...new Set([...statics.names, ...Object.keys(namedSources).filter((name) => IDENTIFIER.test(name))]),
+    ];
     const context: EvalContext = {
       hass,
       config: this._config,
-      vars,
+      vars: [] as unknown as EvalVars,
+      svars: statics.svars,
+      names,
+      values: names.map((name) => statics.values[statics.names.indexOf(name)]),
+      arraySources,
+      namedSources,
+    };
+
+    this._evaluateSources(context, context.vars, 'variables');
+    return context;
+  }
+
+  /**
+   * Static variables are evaluated once, the first time hass is available after `setConfig`, and
+   * reused until the config changes (from #159).
+   */
+  private _getStatics(hass: HomeAssistant | undefined): StaticVars {
+    if (this._statics) {
+      return this._statics;
+    }
+
+    const { arraySources, namedSources } = this._collectSources([
+      this.getLovelaceStaticVars(),
+      this._config?.staticVariables,
+    ]);
+    const names = Object.keys(namedSources).filter((name) => IDENTIFIER.test(name));
+    const svars = [] as unknown as EvalVars;
+    const context: EvalContext = {
+      hass,
+      config: this._config,
+      vars: [] as unknown as EvalVars,
+      svars,
       names,
       values: names.map(() => undefined),
       arraySources,
       namedSources,
     };
 
-    arraySources.forEach((source, index) => {
-      vars.push(this._evaluateVariable(source, context, `variables[${index}]`));
+    this._evaluateSources(context, svars, 'staticVariables');
+    const statics: StaticVars = { svars, names, values: context.values };
+    if (hass) {
+      this._statics = statics;
+    }
+    return statics;
+  }
+
+  private _collectSources(sources: unknown[]): { arraySources: unknown[]; namedSources: Record<string, unknown> } {
+    const arraySources: unknown[] = [];
+    const namedSources: Record<string, unknown> = {};
+    for (const source of sources) {
+      if (Array.isArray(source)) {
+        arraySources.push(...source);
+      } else if (source && typeof source === 'object') {
+        Object.assign(namedSources, source);
+      }
+    }
+    return { arraySources, namedSources };
+  }
+
+  /** Evaluates the context's variable sources into `target`; each can use the ones before it. */
+  private _evaluateSources(context: EvalContext, target: EvalVars, label: string): void {
+    context.arraySources.forEach((source, index) => {
+      target.push(this._evaluateVariable(source, context, `${label}[${index}]`));
     });
 
-    // Each named variable can use the ones defined before it.
-    Object.keys(namedSources).forEach((name) => {
-      const value = this._evaluateVariable(namedSources[name], context, name);
-      vars[name] = value;
-      const position = names.indexOf(name);
+    Object.keys(context.namedSources).forEach((name) => {
+      const value = this._evaluateVariable(context.namedSources[name], context, name);
+      target[name] = value;
+      const position = context.names.indexOf(name);
       if (position >= 0) {
         context.values[position] = value;
       }
     });
-
-    return context;
   }
 
   private _evaluateVariable(source: unknown, context: EvalContext, variableName: string): unknown {
@@ -449,6 +504,7 @@ export class ConfigTemplateCard extends LitElement {
         hass?.states,
         hass?.user,
         context.vars,
+        context.svars,
         context.config,
         context.output,
         ...context.values,
@@ -479,7 +535,7 @@ export class ConfigTemplateCard extends LitElement {
       return cached;
     }
 
-    const params = ['hass', 'states', 'user', 'vars', 'config', 'output', ...names];
+    const params = ['hass', 'states', 'user', 'vars', 'svars', 'config', 'output', ...names];
     let compiled: CompiledTemplate;
 
     try {
