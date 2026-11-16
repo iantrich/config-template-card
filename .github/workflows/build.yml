@@ -32,3 +32,11 @@ jobs:
 
       - name: Build
         run: yarn build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: config-template-card.js
+          path: dist/config-template-card.js
+          if-no-files-found: error
+          overwrite: true
