@@ -32,6 +32,7 @@ Use [HACS](https://hacs.xyz) or follow this [guide](https://github.com/thomaslov
 | type      | string | **Required** | `custom:config-template-card`                                                                                    |
 | entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here, either per item or as one template that returns a list |
 | variables | list or object | **Optional** | Variables, which can be templates, that can be used in your templates and indexed using `vars` or by name |
+| staticVariables | list or object | **Optional** | Like `variables`, but evaluated once when the card loads (see [Static variables](#static-variables)) |
 | card      | object | **Optional**\* | Card configuration |
 | row       | object | **Optional**\* | Row configuration, for use inside an Entities card |
 | element   | object | **Optional**\* | Element configuration, for use inside a Picture elements card or as a badge |
@@ -69,6 +70,7 @@ Either way, a variable can use the variables defined before it: `vars[0]` in a l
 | `states`    | The [states](https://developers.home-assistant.io/docs/frontend/data/#hassstates) object                                                                                                                                                                                                                                                                                                              |
 | `user`      | The [user](https://developers.home-assistant.io/docs/frontend/data/#hassuser) object                                                                                                                                                                                                                                                                                                                  |
 | `vars`      | Defined by `variables` configuration and accessible in your templates to help clean them up. If `variables` in the configuration is a yaml list, then `vars` is an array starting at the 0th index as your firstly defined variable. If `variables` is an object in the configuration, then `vars` is a string-indexed map and you can also access the variables by name without using `vars` at all. |
+| `svars`     | Static variables from `staticVariables` and `config_template_card_staticVars`, indexed like `vars`. Named static variables are also available by name |
 | `config`    | This card's own configuration, before templates are evaluated. For example `config.card.entity` is the inner card's entity, and custom top-level keys are available too |
 | `output`    | The inner card's configuration built so far. Keys are evaluated in order, so a template can read keys above it, for example `output.entities.length` |
 ## Examples
@@ -277,6 +279,27 @@ What this example does:
 - Uses `entities` to watch only what the template depends on (`climate.ecobee`).
 - Keeps card config clean by moving conditional text logic into a reusable variable function.
 - Uses double quotes for `"It's getting hot in here..."`, since an apostrophe inside a single-quoted JavaScript string ends the string early.
+
+## Static variables
+
+`staticVariables` work like `variables`, but are evaluated only once: the first time Home Assistant data is available after the card loads, and again only when the card's configuration changes. Use them for values that don't change, or are expensive to compute, so they aren't recalculated on every update:
+
+```yaml
+type: custom:config-template-card
+staticVariables:
+  BATTERIES: Object.keys(states).filter((id) => id.includes('battery'))
+variables:
+  LOW: BATTERIES.filter((id) => Number(states[id].state) < 20)
+entities: ${BATTERIES}
+card:
+  type: entities
+  title: "${LOW.length} of ${BATTERIES.length} batteries low"
+  entities: ${BATTERIES}
+```
+
+Static variables are available as `svars` (`svars[0]` for a list, `svars.NAME` for an object) and by name. Regular variables can use them, and a regular variable with the same name takes precedence. Dashboard-wide static variables go under `config_template_card_staticVars`, next to `config_template_card_vars`, and are evaluated before the card's own.
+
+Because they don't update, a static variable that reads `states` keeps the value from when the card loaded. In the example above the list of battery entities is static, while their states are read on every update.
 
 ## Dashboard wide variables
 

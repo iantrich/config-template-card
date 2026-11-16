@@ -869,3 +869,85 @@ describe('config and output template variables', () => {
     expect(resolveEntities()).toEqual(['sun.sun']);
   });
 });
+
+describe('static variables', () => {
+  const states = { 'sun.sun': { state: 'above_horizon' }, 'input_number.level': { state: '40' } };
+
+  const setup = (config: Record<string, unknown>, dashboardStatics?: unknown) => {
+    const card = new ConfigTemplateCard();
+    const internals = card as unknown as {
+      _helpers: unknown;
+      render: () => unknown;
+      getLovelaceStaticVars: () => unknown;
+    };
+    vi.spyOn(card as unknown as { loadCardHelpers: () => void }, 'loadCardHelpers').mockImplementation(() => undefined);
+    vi.spyOn(internals, 'getLovelaceStaticVars').mockReturnValue(dashboardStatics);
+    const createCardElement = vi.fn((_config: unknown) => document.createElement('div'));
+    internals._helpers = { createCardElement };
+    card.setConfig({ type: 'custom:config-template-card', entities: ['sun.sun'], ...config } as never);
+    const render = (hassStates: Record<string, unknown> = states) => {
+      card.hass = { states: { ...hassStates }, user: { name: 'Dev' } } as never;
+      internals.render();
+      return createCardElement.mock.calls.at(-1)?.[0] as unknown as Record<string, unknown>;
+    };
+    return { card, render };
+  };
+
+  afterEach(() => {
+    delete (window as unknown as { ctcCount?: unknown }).ctcCount;
+  });
+
+  it('evaluates static variables once, while regular variables run on every update', () => {
+    const counts = { static: 0, regular: 0 };
+    (window as unknown as { ctcCount: (kind: 'static' | 'regular') => number }).ctcCount = (kind) => ++counts[kind];
+    const { render } = setup({
+      staticVariables: { S: "window.ctcCount('static')" },
+      variables: { R: "window.ctcCount('regular')" },
+      card: { type: 'entities', title: '${S}/${R}' },
+    });
+
+    expect(render().title).toBe('1/1');
+    expect(render().title).toBe('1/2');
+    expect(render().title).toBe('1/3');
+    expect(counts.static).toBe(1);
+  });
+
+  it('exposes static variables as svars, by name, and to regular variables', () => {
+    const { render } = setup({
+      staticVariables: ["'list'", 'svars[0] + "!"'],
+      variables: { FROM_STATIC: 'svars[1] + " via vars"' },
+      card: { type: 'entities', title: '${svars[0]} ${svars[1]} ${FROM_STATIC}' },
+    });
+    expect(render().title).toBe('list list! list! via vars');
+
+    const named = setup({
+      staticVariables: { UNIT: "'°C'", LABEL: "'Temp ' + UNIT" },
+      variables: { LEVEL: "states['input_number.level'].state" },
+      card: { type: 'entities', title: '${LABEL}: ${LEVEL}${svars.UNIT}' },
+    });
+    expect(named.render().title).toBe('Temp °C: 40°C');
+  });
+
+  it('puts dashboard-wide static variables before card ones, and lets a regular variable override a static name', () => {
+    const { render } = setup(
+      {
+        staticVariables: { CARD: "DASH + '+card'", SHADOWED: "'static'" },
+        variables: { SHADOWED: "'regular'" },
+        card: { type: 'entities', title: '${CARD} ${SHADOWED} ${svars.SHADOWED}' },
+      },
+      { DASH: "'dash'" },
+    );
+    expect(render().title).toBe('dash+card regular static');
+  });
+
+  it('re-evaluates static variables when the config changes', () => {
+    let calls = 0;
+    (window as unknown as { ctcCount: () => number }).ctcCount = () => ++calls;
+    const config = { staticVariables: { S: 'window.ctcCount()' }, card: { type: 'entities', title: '${S}' } };
+    const { card, render } = setup(config);
+
+    expect(render().title).toBe(1);
+    card.setConfig({ type: 'custom:config-template-card', entities: ['sun.sun'], ...config } as never);
+    expect(render().title).toBe(2);
+  });
+});

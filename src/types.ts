@@ -10,6 +10,8 @@ export interface ConfigTemplateConfig {
   /** Entity ids to watch, any of which may be a template, or one template that returns a list. */
   entities: string[] | string;
   variables?: unknown[] | { [key: string]: unknown };
+  /** Variables evaluated once when the card loads, available as `svars` and by name. */
+  staticVariables?: unknown[] | { [key: string]: unknown };
   card?: LovelaceCardConfig;
   row?: EntitiesCardEntityConfig;
   element?: LovelaceElementConfigBase;
@@ -17,6 +19,13 @@ export interface ConfigTemplateConfig {
 }
 
 export type TemplateVars = ConfigTemplateConfig['variables'];
+
+/** Static variables, evaluated once per card config. */
+export interface StaticVars {
+  svars: EvalVars;
+  names: string[];
+  values: unknown[];
+}
 export type ConfigObject = Record<string, unknown>;
 export type CreatedElement = HTMLElement & { hass?: HomeAssistant };
 export type EvalVars = Array<unknown> & { [key: string]: unknown };
@@ -27,6 +36,7 @@ export interface EvalContext {
   hass?: HomeAssistant;
   config?: ConfigTemplateConfig;
   vars: EvalVars;
+  svars: EvalVars;
   /** Named variables exposed to templates as bare identifiers, with their values. */
   names: string[];
   values: unknown[];
@@ -46,6 +56,7 @@ export interface LovelacePanelWithVars extends Element {
   lovelace?: {
     config?: {
       config_template_card_vars?: unknown;
+      config_template_card_staticVars?: unknown;
     };
   };
 }
