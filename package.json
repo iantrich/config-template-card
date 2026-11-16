@@ -45,7 +45,7 @@
     "rollup-plugin-serve": "^1.1.1",
     "tslib": "^2.6.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.11"
   },
   "scripts": {
     "start": "rollup -c rollup.config.dev.js --watch",
