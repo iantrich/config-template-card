@@ -362,6 +362,16 @@ The same rules apply to `variables`, so a variable can hold several statements o
 
 A `custom:config-template-card` nested inside another one (for example inside a `vertical-stack`) evaluates its own templates with its own `variables`; the outer card leaves that part of its config untouched. Use dashboard-wide variables for values both need.
 
+### When a template fails
+
+If a template or variable throws an error (for example reading `.state` of an entity that doesn't exist), the error is logged to the browser console with the template and variables involved, and the card keeps rendering:
+
+- A value that is a single template becomes `null`, so the inner card falls back to its default (for example the entity's own name).
+- A template inside a string is replaced by `<error>`.
+- A variable that fails becomes `null`.
+
+Use optional chaining to handle entities that may be missing: `${states['sensor.maybe']?.state ?? 'unknown'}`.
+
 ## Upgrading from 1.x
 
 - Home Assistant 2026.2.3 or newer is required.

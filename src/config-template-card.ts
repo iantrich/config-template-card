@@ -23,6 +23,8 @@ const CODE_PARAM = '__ctcTemplateCode';
 const NESTED_CARD_TYPE = 'custom:config-template-card';
 /** A value starting with this prefix is passed through as text, with the prefix removed (from #159). */
 const LITERAL_PREFIX = '$! ';
+/** Shown in place of a template inside a string when that template fails. */
+const EMBEDDED_ERROR_TEXT = '<error>';
 
 /* eslint no-console: 0 */
 console.info(
@@ -150,7 +152,7 @@ export class ConfigTemplateCard extends LitElement {
       oldEntities = this._resolveEntities(oldHass);
       currentEntities = this._resolveEntities(this.hass);
     } catch {
-      // Let render() evaluate again and surface the error.
+      // Template errors are already logged and replaced; anything else unexpected re-renders.
       return true;
     }
 
@@ -334,12 +336,14 @@ export class ConfigTemplateCard extends LitElement {
     const code = singleTemplateCode(template);
     if (code !== undefined) {
       // The whole value is one template: keep the result's type (number, array, object, ...).
-      return this._runCode(code, context, template, 'template');
+      return this._runCode(code, context, template, 'template', null);
     }
 
     return splitTemplate(template)
       .map((part) =>
-        part.kind === 'text' ? part.value : String(this._runCode(part.value, context, template, 'template')),
+        part.kind === 'text'
+          ? part.value
+          : String(this._runCode(part.value, context, template, 'template', EMBEDDED_ERROR_TEXT)),
       )
       .join('');
   }
@@ -412,10 +416,20 @@ export class ConfigTemplateCard extends LitElement {
 
     // Variables are plain code, but a variable written as `${...}` is accepted too.
     const code = singleTemplateCode(source) ?? source;
-    return this._runCode(code, context, source, variableName);
+    return this._runCode(code, context, source, variableName, null);
   }
 
-  private _runCode(code: string, context: EvalContext, template: string, variableName: string): unknown {
+  /**
+   * Runs one template or variable. A failure is logged and replaced by `fallback`, so one broken
+   * template doesn't blank the whole card (from #159).
+   */
+  private _runCode(
+    code: string,
+    context: EvalContext,
+    template: string,
+    variableName: string,
+    fallback: unknown,
+  ): unknown {
     const hass = context.hass;
 
     try {
@@ -436,7 +450,7 @@ export class ConfigTemplateCard extends LitElement {
         evaluatedVariables: context.vars,
         error,
       });
-      throw error;
+      return fallback;
     }
   }
 
