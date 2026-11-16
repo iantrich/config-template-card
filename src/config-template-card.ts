@@ -20,6 +20,7 @@ import { singleTemplateCode, splitTemplate } from './template';
 /** Named variables that are valid JS identifiers are also exposed as bare names in templates. */
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
 const CODE_PARAM = '__ctcTemplateCode';
+const NESTED_CARD_TYPE = 'custom:config-template-card';
 
 /* eslint no-console: 0 */
 console.info(
@@ -295,6 +296,11 @@ export class ConfigTemplateCard extends LitElement {
     }
 
     if (value && typeof value === 'object') {
+      // A nested config-template-card evaluates its own templates with its own variables.
+      if ((value as ConfigObject).type === NESTED_CARD_TYPE) {
+        return value;
+      }
+
       const result: ConfigObject = {};
       Object.entries(value as ConfigObject).forEach(([key, entry]) => {
         result[key] = this._evaluateValue(entry, context);

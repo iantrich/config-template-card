@@ -626,3 +626,64 @@ describe('ConfigTemplateCard beta regressions', () => {
     });
   });
 });
+
+describe('nested config-template-cards', () => {
+  const states = {
+    'input_boolean.switch': { state: 'on' },
+    'input_number.level': { state: '80' },
+  };
+
+  const inner = {
+    type: 'custom:config-template-card',
+    variables: { LEVEL: "states['input_number.level'].state" },
+    entities: ['input_number.level'],
+    card: { type: 'entities', entities: [{ entity: 'input_number.level', name: 'Inner: level ${parseInt(LEVEL)}' }] },
+  };
+
+  const renderOuter = (cardConfig: Record<string, unknown>): ReturnType<typeof vi.fn> => {
+    const card = new ConfigTemplateCard();
+    const internals = card as unknown as {
+      _config: unknown;
+      _helpers: unknown;
+      render: () => unknown;
+    };
+    const createCardElement = vi.fn(() => document.createElement('div'));
+    card.hass = { states, user: { name: 'Dev' } } as never;
+    internals._helpers = { createCardElement };
+    internals._config = {
+      type: 'custom:config-template-card',
+      variables: { SWITCH: "states['input_boolean.switch'].state" },
+      entities: ['input_boolean.switch'],
+      card: cardConfig,
+    };
+    internals.render();
+    return createCardElement;
+  };
+
+  it('leaves a nested card config for the inner card to evaluate', () => {
+    const createCardElement = renderOuter({
+      type: 'vertical-stack',
+      cards: [{ type: 'markdown', content: 'Outer: switch is ${SWITCH}' }, inner],
+    });
+
+    expect(createCardElement).toHaveBeenCalledWith({
+      type: 'vertical-stack',
+      cards: [{ type: 'markdown', content: 'Outer: switch is on' }, inner],
+    });
+  });
+
+  it('lets the inner card render its own templates with its own variables', () => {
+    const innerCard = new ConfigTemplateCard();
+    const internals = innerCard as unknown as { _config: unknown; _helpers: unknown; render: () => unknown };
+    const createCardElement = vi.fn(() => document.createElement('div'));
+    innerCard.hass = { states, user: { name: 'Dev' } } as never;
+    internals._helpers = { createCardElement };
+    internals._config = inner;
+    internals.render();
+
+    expect(createCardElement).toHaveBeenCalledWith({
+      type: 'entities',
+      entities: [{ entity: 'input_number.level', name: 'Inner: level 80' }],
+    });
+  });
+});
