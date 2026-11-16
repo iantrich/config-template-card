@@ -12,6 +12,8 @@ import type {
   EvalContext,
   EvalVars,
   LovelacePanelWithVars,
+  LovelaceViewWithVars,
+  SharedTemplateConfig,
   StaticVars,
   TemplateVars,
   WindowWithCardHelpers,
@@ -104,11 +106,11 @@ export class ConfigTemplateCard extends LitElement {
       throw new Error('No element type defined');
     }
 
-    if (!config.entities) {
+    if (!config.entities && this.getLovelaceEntities().length === 0) {
       throw new Error('No entities defined');
     }
 
-    if (!Array.isArray(config.entities) && typeof config.entities !== 'string') {
+    if (config.entities !== undefined && !Array.isArray(config.entities) && typeof config.entities !== 'string') {
       throw new Error('entities must be a list of entity ids or a template that returns one');
     }
 
@@ -135,14 +137,53 @@ export class ConfigTemplateCard extends LitElement {
     return null;
   }
 
-  private getLovelaceConfig(): TemplateVars | undefined {
+  private _getDashboardConfig(): (SharedTemplateConfig & { views?: LovelaceViewWithVars[] }) | undefined {
     const panel = this.getLovelacePanel() as LovelacePanelWithVars | null;
-    return this._asVariables(panel?.lovelace?.config?.config_template_card_vars);
+    return panel?.lovelace?.config;
+  }
+
+  /**
+   * The view this card is on, found the way Home Assistant routes views: the URL's view segment
+   * matches a view's `path`, or is its index; no segment means the first view (from #171).
+   */
+  private _getViewConfig(): LovelaceViewWithVars | undefined {
+    const views = this._getDashboardConfig()?.views;
+    if (!Array.isArray(views) || views.length === 0) {
+      return undefined;
+    }
+
+    const segment = decodeURIComponent(window.location.pathname.split('/')[2] ?? '');
+    const byPath = views.find((view) => view.path === segment);
+    if (byPath) {
+      return byPath;
+    }
+
+    const index = segment === '' ? 0 : Number(segment);
+    return Number.isInteger(index) ? views[index] : undefined;
+  }
+
+  private getLovelaceConfig(): TemplateVars | undefined {
+    return this._asVariables(this._getDashboardConfig()?.config_template_card_vars);
+  }
+
+  private getLovelaceViewVars(): TemplateVars | undefined {
+    return this._asVariables(this._getViewConfig()?.config_template_card_vars);
   }
 
   private getLovelaceStaticVars(): TemplateVars | undefined {
-    const panel = this.getLovelacePanel() as LovelacePanelWithVars | null;
-    return this._asVariables(panel?.lovelace?.config?.config_template_card_staticVars);
+    return this._asVariables(this._getDashboardConfig()?.config_template_card_staticVars);
+  }
+
+  private getLovelaceViewStaticVars(): TemplateVars | undefined {
+    return this._asVariables(this._getViewConfig()?.config_template_card_staticVars);
+  }
+
+  /** Entities every config-template-card on this dashboard and view watches (from #171). */
+  private getLovelaceEntities(): unknown[] {
+    return [
+      this._getDashboardConfig()?.config_template_card_entities,
+      this._getViewConfig()?.config_template_card_entities,
+    ].filter((entities) => entities !== undefined && entities !== null);
   }
 
   private _asVariables(localVars: unknown): TemplateVars | undefined {
@@ -356,8 +397,9 @@ export class ConfigTemplateCard extends LitElement {
    * single template that evaluates to a list; nested lists are flattened.
    */
   private _resolveEntities(hass: HomeAssistant): string[] {
-    const entities = this._config?.entities;
-    if (entities === undefined) {
+    // Dashboard and view entities are watched by every card, in addition to the card's own.
+    const entities = [...this.getLovelaceEntities(), this._config?.entities].filter((source) => source !== undefined);
+    if (entities.length === 0) {
       return [];
     }
 
@@ -451,8 +493,12 @@ export class ConfigTemplateCard extends LitElement {
 
   private _buildContext(hass: HomeAssistant | undefined): EvalContext {
     const statics = this._getStatics(hass);
-    // Dashboard-wide variables first, so card variables can build on (and override) them.
-    const { arraySources, namedSources } = this._collectSources([this.getLovelaceConfig(), this._config?.variables]);
+    // Dashboard, then view, then card variables: each level can build on (and override) the one before.
+    const { arraySources, namedSources } = this._collectSources([
+      this.getLovelaceConfig(),
+      this.getLovelaceViewVars(),
+      this._config?.variables,
+    ]);
 
     // Bare names cover static and regular variables; a regular variable overrides a static one.
     const names = [
@@ -484,6 +530,7 @@ export class ConfigTemplateCard extends LitElement {
 
     const { arraySources, namedSources } = this._collectSources([
       this.getLovelaceStaticVars(),
+      this.getLovelaceViewStaticVars(),
       this._config?.staticVariables,
     ]);
     const names = Object.keys(namedSources).filter((name) => IDENTIFIER.test(name));

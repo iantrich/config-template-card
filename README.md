@@ -328,27 +328,37 @@ card:
 - `entities` must be known right away, so async results there are ignored with a warning.
 - Templates that don't return a Promise behave exactly as before.
 
-## Dashboard wide variables
+## Dashboard and view wide variables
 
-If you need to use the same variable in multiple cards, then instead of defining it in each card's `variables` you can do that once for the entire dashboard.
+If you need the same variables in multiple cards, define them once for the whole dashboard, or for one view, instead of in each card. The same works for entities every card should watch:
 
 ```yaml
 title: My dashboard
 
 config_template_card_vars:
-  - states['sensor.light'].state
+  HOME: states['zone.home'].attributes.friendly_name
 
 views:
+  - title: Kitchen
+    path: kitchen
+    config_template_card_vars:
+      ROOM: HOME + ' / Kitchen'
+    config_template_card_entities:
+      - light.kitchen
+    cards:
+      - type: custom:config-template-card
+        card:
+          type: entities
+          title: ${ROOM}
+          entities:
+            - light.kitchen
 ```
 
-What this example does:
-
-- Defines `config_template_card_vars` at dashboard root so many cards can reuse shared variables.
-- Avoids repeating identical variable expressions in every individual card config.
-- Supports both array and object forms, same as local `variables`.
-- When both dashboard and local variables are arrays, dashboard entries come first in `vars`.
-
-Both arrays and objects are supported, just like in card's local variables. It is allowed to mix the two types, i.e. use an array in dashboard variables and an object in card variables, or the other way around. If both definitions are arrays, then dashboard variables are put first in `vars`. In the mixed mode, `vars` have array indices and as well as variable names.
+- `config_template_card_vars` at the dashboard root applies to every card on the dashboard. On a view, it applies only to cards on that view.
+- Variables load dashboard first, then view, then card, so each level can use the ones before it, and a later level overrides an earlier variable with the same name.
+- `config_template_card_staticVars` works the same way for [static variables](#static-variables).
+- `config_template_card_entities`, at the dashboard root or on a view, is added to every card's watch list. A card can then leave out its own `entities`.
+- Both lists and objects are supported, just like a card's `variables`. You can mix the two. If more than one level uses a list, they are joined in the same order in `vars`. In mixed mode, `vars` has both list indices and variable names.
 
 ### Passing text through untouched
 
