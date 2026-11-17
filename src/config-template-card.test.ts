@@ -1265,3 +1265,66 @@ describe('view-wide variables and shared entities (#171)', () => {
     expect(changed('light.kitchen')).toBe(true);
   });
 });
+
+describe('card size before the first render (#45)', () => {
+  const setup = (helpers?: unknown) => {
+    const card = new ConfigTemplateCard();
+    const internals = card as unknown as {
+      _config: unknown;
+      _helpers: unknown;
+      _helpersLoading?: Promise<void>;
+      render: () => unknown;
+    };
+    const createCardElement = vi.fn((config: { rows?: number }) =>
+      Object.assign(document.createElement('div'), { getCardSize: () => config.rows ?? 0 }),
+    );
+    card.hass = { states: { 'sun.sun': { state: 'above_horizon' } }, user: { name: 'Dev' } } as never;
+    internals._helpers = helpers === undefined ? { createCardElement } : helpers;
+    internals._config = {
+      type: 'custom:config-template-card',
+      entities: ['sun.sun'],
+      card: { type: 'entities', rows: '${4 + 3}' },
+    };
+    return { card, internals, createCardElement };
+  };
+
+  it('measures the evaluated inner card instead of reporting 1', async () => {
+    const { card } = setup();
+    await expect(card.getCardSize()).resolves.toBe(7);
+  });
+
+  it('reuses the measured card for the first render', async () => {
+    const { card, internals, createCardElement } = setup();
+    await card.getCardSize();
+    internals.render();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(createCardElement).toHaveBeenCalledOnce();
+
+    // Later renders build a fresh card as before.
+    internals.render();
+    expect(createCardElement).toHaveBeenCalledTimes(2);
+  });
+
+  it('waits for the card helpers to load', async () => {
+    const createCardElement = vi.fn(() => Object.assign(document.createElement('div'), { getCardSize: () => 5 }));
+    const { card, internals } = setup(null);
+    internals._helpers = undefined;
+    internals._helpersLoading = Promise.resolve().then(() => {
+      internals._helpers = { createCardElement };
+    });
+    await expect(card.getCardSize()).resolves.toBe(5);
+  });
+
+  it('reports 1 when the helpers never load', async () => {
+    const { card, internals } = setup(null);
+    internals._helpers = undefined;
+    internals._helpersLoading = Promise.resolve();
+    await expect(card.getCardSize()).resolves.toBe(1);
+  });
+
+  it('reports 1 for rows and elements', () => {
+    const { card, internals } = setup();
+    internals._config = { type: 'custom:config-template-card', entities: ['sun.sun'], row: { type: 'section' } };
+    expect(card.getCardSize()).toBe(1);
+  });
+});
