@@ -9,6 +9,7 @@ import type {
   CompiledTemplate,
   ConfigObject,
   ConfigTemplateConfig,
+  CreatedElement,
   EvalContext,
   EvalVars,
   LovelacePanelWithVars,
@@ -82,6 +83,10 @@ export class ConfigTemplateCard extends LitElement {
   /** The last finished render, shown while an async render is pending. */
   private _lastRendered?: TemplateResult;
   private _compiled = new Map<string, CompiledTemplate>();
+  /** Settles once `loadCardHelpers` has finished, whether or not it found the helpers. */
+  private _helpersLoading?: Promise<void>;
+  /** An inner card built by `getCardSize` before the first render, which that render reuses (#45). */
+  private _measured?: { hass: HomeAssistant; config: ConfigTemplateConfig; element: Promise<CreatedElement> };
 
   public setConfig(config: ConfigTemplateConfig): void {
     if (!config) {
@@ -119,8 +124,9 @@ export class ConfigTemplateCard extends LitElement {
     this._statics = undefined;
     this._lastRendered = undefined;
     this._compiled.clear();
+    this._measured = undefined;
 
-    this.loadCardHelpers();
+    this._helpersLoading = this.loadCardHelpers();
   }
 
   private getLovelacePanel() {
@@ -234,14 +240,46 @@ export class ConfigTemplateCard extends LitElement {
   }
 
   public getCardSize(): number | Promise<number> {
-    if (this.shadowRoot) {
-      const element = this.shadowRoot.querySelector('#card > *') as LovelaceCard;
-      if (element) {
-        return computeCardSize(element);
-      }
+    const element = this.shadowRoot?.querySelector('#card > *') as LovelaceCard | null | undefined;
+    if (element) {
+      return computeCardSize(element);
+    }
+
+    // A masonry view sizes each card before adding it to the page, so before this card has
+    // rendered: measure the inner card off the page instead of reporting 1 (#45).
+    if (this._config?.card) {
+      return this._measureUnrendered();
     }
 
     return 1;
+  }
+
+  private async _measureUnrendered(): Promise<number> {
+    if (!this._helpers) {
+      await this._helpersLoading;
+    }
+    const hass = this.hass;
+    const config = this._config;
+    if (!this._helpers || !hass || !config) {
+      return 1;
+    }
+
+    try {
+      if (this._measured?.hass !== hass || this._measured.config !== config) {
+        this._measured = { hass, config, element: Promise.resolve(this._buildElement()) };
+      }
+      return await computeCardSize((await this._measured.element) as unknown as LovelaceCard);
+    } catch (error) {
+      console.error('config-template-card: unable to measure the card', error);
+      return 1;
+    }
+  }
+
+  /** The element `getCardSize` built, when it still matches the current hass and config. */
+  private _takeMeasured(): Promise<CreatedElement> | undefined {
+    const measured = this._measured;
+    this._measured = undefined;
+    return measured?.hass === this.hass && measured?.config === this._config ? measured?.element : undefined;
   }
 
   protected render(): TemplateResult | void {
@@ -254,33 +292,38 @@ export class ConfigTemplateCard extends LitElement {
       return html``;
     }
 
-    const result = this._renderCard();
-    if (!isThenable(result)) {
-      this._lastRendered = result;
-      return result;
+    const element = this._takeMeasured() ?? this._buildElement();
+    if (!isThenable(element)) {
+      this._lastRendered = this._wrapElement(element);
+      return this._lastRendered;
     }
 
     // Keep showing the previous render until the async templates settle.
-    const settled = result.then((rendered) => {
-      this._lastRendered = rendered;
-      return rendered;
+    const settled = element.then((resolved) => {
+      this._lastRendered = this._wrapElement(resolved);
+      return this._lastRendered;
     });
     return html`${until(settled, this._lastRendered ?? nothing)}`;
   }
 
-  private _renderCard(): TemplateResult | Promise<TemplateResult> {
+  private _wrapElement(element: CreatedElement): TemplateResult {
+    return html` <div id="card">${element}</div> `;
+  }
+
+  /** Evaluates the config's templates and creates the inner card, row or element from the result. */
+  private _buildElement(): CreatedElement | Promise<CreatedElement> {
     // Static variables that return Promises settle first; regular variables are then rebuilt.
     const statics = this._getStatics(this.hass);
     if (statics.pending) {
-      return statics.pending.then(() => this._renderCard());
+      return statics.pending.then(() => this._buildElement());
     }
-    return this._renderWithContext(this._getContext(this.hass));
+    return this._buildWithContext(this._getContext(this.hass));
   }
 
-  private _renderWithContext(context: EvalContext): TemplateResult | Promise<TemplateResult> {
+  private _buildWithContext(context: EvalContext): CreatedElement | Promise<CreatedElement> {
     if (context.pending) {
       // Every render using this context waits for the same async variables to settle.
-      return context.pending.then(() => this._renderWithContext({ ...context, pending: undefined }));
+      return context.pending.then(() => this._buildWithContext({ ...context, pending: undefined }));
     }
 
     const sourceConfig = this._config?.card ?? this._config?.row ?? this._config?.element;
@@ -292,14 +335,14 @@ export class ConfigTemplateCard extends LitElement {
 
     if (containsThenable(config) || containsThenable(style)) {
       return Promise.all([resolveDeep(config), resolveDeep(style)]).then(([resolvedConfig, resolvedStyle]) =>
-        this._createCard(resolvedConfig as ConfigObject, resolvedStyle),
+        this._createElement(resolvedConfig as ConfigObject, resolvedStyle),
       );
     }
 
-    return this._createCard(config, style);
+    return this._createElement(config, style);
   }
 
-  private _createCard(config: ConfigObject, style: unknown): TemplateResult {
+  private _createElement(config: ConfigObject, style: unknown): CreatedElement {
     const helpers = this._helpers as CardHelpers;
     const styleRecord = this._asStyleRecord(style);
 
@@ -324,7 +367,7 @@ export class ConfigTemplateCard extends LitElement {
       }
     }
 
-    return html` <div id="card">${element}</div> `;
+    return element;
   }
 
   private _initialize(): void {
