@@ -525,6 +525,51 @@ describe('ConfigTemplateCard beta regressions', () => {
       expect(internals.shouldUpdate(new Map<string, unknown>([['hass', { states: oldStates }]]))).toBe(true);
       expect(internals.shouldUpdate(new Map<string, unknown>([['hass', { states }]]))).toBe(false);
     });
+
+    describe('wildcards (#95)', () => {
+      const withOld = (oldStates: Record<string, unknown>): Map<string, unknown> =>
+        new Map<string, unknown>([['hass', { states: oldStates }]]);
+
+      it('watches every entity matching a `*` pattern', () => {
+        configure({ entities: ['light.*'] });
+        expect(internals.shouldUpdate(unchangedHass())).toBe(false);
+        expect(internals.shouldUpdate(withOld({ ...states, 'light.bedroom': { state: 'on' } }))).toBe(true);
+        expect(internals.shouldUpdate(withOld({ ...states, 'sun.sun': { state: 'below_horizon' } }))).toBe(false);
+      });
+
+      it('matches `*` anywhere in the id, including the middle', () => {
+        configure({ entities: ['light.*room'] });
+        expect(internals.shouldUpdate(withOld({ ...states, 'light.bedroom': { state: 'on' } }))).toBe(true);
+        expect(internals.shouldUpdate(withOld({ ...states, 'light.kitchen': { state: 'off' } }))).toBe(false);
+      });
+
+      it('re-renders when a new matching entity appears or one goes away', () => {
+        configure({ entities: ['light.*'] });
+        const fewer: Record<string, unknown> = { ...states };
+        delete fewer['light.bedroom'];
+        expect(internals.shouldUpdate(withOld(fewer))).toBe(true);
+        expect(internals.shouldUpdate(withOld({ ...states, 'light.hall': { state: 'on' } }))).toBe(true);
+      });
+
+      it('treats other characters literally', () => {
+        configure({ entities: ['light.*'] });
+        card.hass = { states: { ...states, lightXhall: { state: 'on' } } } as never;
+        expect(internals.shouldUpdate(withOld({ ...states, lightXhall: { state: 'off' } }))).toBe(false);
+      });
+
+      it('expands patterns produced by templates', () => {
+        configure({ variables: { DOMAIN: "'light'" }, entities: ['${DOMAIN}.*'] });
+        expect(internals.shouldUpdate(withOld({ ...states, 'light.bedroom': { state: 'on' } }))).toBe(true);
+        expect(internals.shouldUpdate(withOld({ ...states, 'sun.sun': { state: 'below_horizon' } }))).toBe(false);
+      });
+
+      it('warns when a pattern watches every entity', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        configure({ entities: ['*'] });
+        expect(internals.shouldUpdate(withOld({ ...states, 'sun.sun': { state: 'below_horizon' } }))).toBe(true);
+        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('every entity'));
+      });
+    });
   });
 
   describe('template evaluation', () => {

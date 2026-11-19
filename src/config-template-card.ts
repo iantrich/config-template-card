@@ -22,6 +22,7 @@ import type {
 import { CARD_VERSION } from './const';
 import { singleTemplateCode, splitTemplate } from './template';
 import { AsyncFunction, containsThenable, isThenable, resolveDeep } from './async';
+import { expandWildcards } from './wildcard';
 
 /** Named variables that are valid JS identifiers are also exposed as bare names in templates. */
 const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
@@ -437,7 +438,8 @@ export class ConfigTemplateCard extends LitElement {
 
   /**
    * Resolves the watched entity ids. `entities` may be a list whose items are templates, or a
-   * single template that evaluates to a list; nested lists are flattened.
+   * single template that evaluates to a list; nested lists are flattened. Ids containing `*` are
+   * expanded to the matching entities in `hass` (#95).
    */
   private _resolveEntities(hass: HomeAssistant): string[] {
     // Dashboard and view entities are watched by every card, in addition to the card's own.
@@ -457,9 +459,10 @@ export class ConfigTemplateCard extends LitElement {
       );
     }
 
-    return list
+    const ids = list
       .filter((entity) => entity !== undefined && entity !== null && !isThenable(entity))
       .map((entity) => String(entity));
+    return expandWildcards(ids, Object.keys(hass.states));
   }
 
   private _evaluateTemplate(template: string, hassOverride?: HomeAssistant): unknown {
