@@ -30,7 +30,7 @@ Use [HACS](https://hacs.xyz) or follow this [guide](https://github.com/thomaslov
 | Name      | Type   | Requirement  | Description                                                                                                      |
 | --------- | ------ | ------------ | ---------------------------------------------------------------------------------------------------------------- |
 | type      | string | **Required** | `custom:config-template-card`                                                                                    |
-| entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here, either per item or as one template that returns a list |
+| entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here, either per item or as one template that returns a list. `*` matches any characters (see [Wildcards in entities](#wildcards-in-entities)) |
 | variables | list or object | **Optional** | Variables, which can be templates, that can be used in your templates and indexed using `vars` or by name |
 | staticVariables | list or object | **Optional** | Like `variables`, but evaluated once when the card loads (see [Static variables](#static-variables)) |
 | card      | object | **Optional**\* | Card configuration |
@@ -153,6 +153,32 @@ card:
   type: entities
   entities: ${BATTERIES.concat(SWITCHES, ['sun.sun'])}
 ```
+
+### Wildcards in entities
+
+An entity id containing `*` watches every entity that matches it, where `*` stands for any run of characters. This is useful when an inner card such as auto-entities picks its own entities and the card should re-render when any of them changes:
+
+```yaml
+type: custom:config-template-card
+variables:
+  THRESHOLD: states['input_number.power_threshold'].state
+entities:
+  - input_number.power_threshold
+  - sensor.*_actueel
+card:
+  type: custom:auto-entities
+  card:
+    type: grid
+    title: ${'Above ' + THRESHOLD + ' W'}
+  filter:
+    include:
+      - entity_id: sensor.*_actueel
+```
+
+- Matches are found again on every state update, so an entity added later is watched too.
+- Patterns work in templates (`sensor.${ROOM}_*`) and in dashboard or view `config_template_card_entities`.
+- Every other character is matched literally. For anything a `*` can't express, use a template, for example `${Object.keys(states).filter((id) => /^sensor\..*_(power|energy)$/.test(id))}`.
+- `*` on its own watches every entity, which re-renders the card on every state change in Home Assistant; the card logs a warning if you use it.
 
 ### Picture-elements card example
 
