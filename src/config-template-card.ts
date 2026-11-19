@@ -70,6 +70,8 @@ export class ConfigTemplateCard extends LitElement {
     const oldValue = this._hass;
     this._hass = value;
     this.requestUpdate('hass', oldValue);
+    const element = this.shadowRoot?.querySelector('#card > *') as LovelaceCard | null | undefined;
+    if (element) element.hass = value;
   }
 
   public get hass(): HomeAssistant | undefined {
@@ -88,6 +90,18 @@ export class ConfigTemplateCard extends LitElement {
   private _helpersLoading?: Promise<void>;
   /** An inner card built by `getCardSize` before the first render, which that render reuses (#45). */
   private _measured?: { hass: HomeAssistant; config: ConfigTemplateConfig; element: Promise<CreatedElement> };
+  private _updateTimer?: number;
+
+  private _handleResize = () => {
+    if (this._updateTimer) {
+      window.clearTimeout(this._updateTimer);
+    }
+    this._updateTimer = window.setTimeout(() => {
+      requestAnimationFrame(() => {
+        this.requestUpdate('_resize', true);
+      });
+    }, 500);
+  };
 
   public setConfig(config: ConfigTemplateConfig): void {
     if (!config) {
@@ -119,6 +133,69 @@ export class ConfigTemplateCard extends LitElement {
     if (config.entities !== undefined && !Array.isArray(config.entities) && typeof config.entities !== 'string') {
       throw new Error('entities must be a list of entity ids or a template that returns one');
     }
+
+    const start = Date.now();
+    const hassPresent = (resolve: (value: void | PromiseLike<void>) => void) => {
+      if (this.hass !== undefined) resolve();
+      else if (Date.now() - start > 5000) resolve();
+      else
+        setTimeout(() => {
+          hassPresent(resolve);
+        }, 100);
+    };
+
+    new Promise<void>(hassPresent)
+      .then(() => {
+        if (!this.hass) return;
+
+        let entities: string[];
+        try {
+          entities = this._resolveEntities(this.hass);
+        } catch {
+          entities = [];
+        }
+
+        for (const entity of entities) {
+          if (entity === '_resize') window.addEventListener('resize', this._handleResize);
+          else if (entity.startsWith('_energy')) {
+            const energyPresent = (resolve: (value: void | PromiseLike<void>) => void) => {
+              if ((this.hass?.connection as unknown as Record<string, unknown>)[entity] !== undefined) resolve();
+              else if (Date.now() - start > 5000) resolve();
+              else
+                setTimeout(() => {
+                  energyPresent(resolve);
+                }, 100);
+            };
+            new Promise<void>(energyPresent)
+              .then(() => {
+                if (
+                  (this.hass?.connection as unknown as Record<string, Record<string, unknown>>)[entity]?.subscribe ===
+                  undefined
+                )
+                  return;
+                // eslint-disable-next-line
+                (this.hass?.connection as unknown as Record<string, Record<string, any>>)[entity].subscribe(
+                  (data: Record<string, unknown>) => {
+                    if ((this.hass?.connection as unknown as Record<string, unknown>)[entity]) {
+                      for (const key of ['start', 'end', 'compare'])
+                        if (data[key] !== undefined)
+                          (this.hass?.connection as unknown as Record<string, Record<string, unknown>>)[entity][key] =
+                            data[key];
+                      this._contextCache = undefined;
+                    }
+                    this.requestUpdate(entity, true);
+                  },
+                );
+              })
+              .catch((err: unknown) => {
+                console.error('Error in Promise: ', err);
+              });
+          }
+        }
+      })
+      .catch((err: unknown) => {
+        console.error('Error in Promise: ', err);
+      });
 
     this._config = config;
     this._contextCache = undefined;
@@ -235,8 +312,14 @@ export class ConfigTemplateCard extends LitElement {
       return true;
     }
 
+    if (currentEntities.some((entityId) => entityId.startsWith('_') && changedProps.has(entityId))) {
+      return true;
+    }
+
     return currentEntities.some(
-      (entityId, index) => entityId !== oldEntities[index] || this.hass?.states[entityId] !== oldHass.states[entityId],
+      (entityId, index) =>
+        !entityId.startsWith('_') &&
+        (entityId !== oldEntities[index] || this.hass?.states[entityId] !== oldHass.states[entityId]),
     );
   }
 
