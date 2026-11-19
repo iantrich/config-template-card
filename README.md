@@ -320,6 +320,33 @@ card:
       name: Living room ${TEMP}°
 ```
 
+### Translated states and attributes
+
+`states[...].state` is the raw value, such as `above_horizon` or `awaiting_start`. To show the same text the built-in cards show, pass the state object to Home Assistant's own formatters on `hass`. They use the entity's translations (including ones a custom integration provides) and format numbers, dates and units for the user's language:
+
+```yaml
+type: custom:config-template-card
+entities:
+  - sun.sun
+card:
+  type: entities
+  entities:
+    - entity: sun.sun
+      name: "${hass.formatEntityState(states['sun.sun'])}"
+    - type: attribute
+      entity: sun.sun
+      attribute: next_rising
+      name: "${hass.formatEntityAttributeName(states['sun.sun'], 'next_rising')}"
+    - type: section
+      label: "Elevation: ${hass.formatEntityAttributeValue(states['sun.sun'], 'elevation')}"
+```
+
+| Function | Returns |
+| -------- | ------- |
+| `hass.formatEntityState(stateObj, state?)` | The translated state, e.g. `Above horizon`. Pass `state` to format a different value for the same entity |
+| `hass.formatEntityAttributeValue(stateObj, attribute, value?)` | The translated, formatted value of an attribute |
+| `hass.formatEntityAttributeName(stateObj, attribute)` | The translated name of an attribute, e.g. `Next rising` |
+
 ### Batteries that need charging
 
 ```yaml
