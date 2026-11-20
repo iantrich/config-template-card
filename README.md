@@ -30,7 +30,7 @@ Use [HACS](https://hacs.xyz) or follow this [guide](https://github.com/thomaslov
 | Name      | Type   | Requirement  | Description                                                                                                      |
 | --------- | ------ | ------------ | ---------------------------------------------------------------------------------------------------------------- |
 | type      | string | **Required** | `custom:config-template-card`                                                                                    |
-| entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here, either per item or as one template that returns a list |
+| entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here, either per item or as one template that returns a list. `*` matches any characters (see [Wildcards in entities](#wildcards-in-entities)) |
 | variables | list or object | **Optional** | Variables, which can be templates, that can be used in your templates and indexed using `vars` or by name |
 | staticVariables | list or object | **Optional** | Like `variables`, but evaluated once when the card loads (see [Static variables](#static-variables)) |
 | card      | object | **Optional**\* | Card configuration |
@@ -153,6 +153,32 @@ card:
   type: entities
   entities: ${BATTERIES.concat(SWITCHES, ['sun.sun'])}
 ```
+
+### Wildcards in entities
+
+An entity id containing `*` watches every entity that matches it, where `*` stands for any run of characters. This is useful when an inner card such as auto-entities picks its own entities and the card should re-render when any of them changes:
+
+```yaml
+type: custom:config-template-card
+variables:
+  THRESHOLD: states['input_number.power_threshold'].state
+entities:
+  - input_number.power_threshold
+  - sensor.*_actueel
+card:
+  type: custom:auto-entities
+  card:
+    type: grid
+    title: ${'Above ' + THRESHOLD + ' W'}
+  filter:
+    include:
+      - entity_id: sensor.*_actueel
+```
+
+- Matches are found again on every state update, so an entity added later is watched too.
+- Patterns work in templates (`sensor.${ROOM}_*`) and in dashboard or view `config_template_card_entities`.
+- Every other character is matched literally. For anything a `*` can't express, use a template, for example `${Object.keys(states).filter((id) => /^sensor\..*_(power|energy)$/.test(id))}`.
+- `*` on its own watches every entity, which re-renders the card on every state change in Home Assistant; the card logs a warning if you use it.
 
 ### Picture-elements card example
 
@@ -293,6 +319,33 @@ card:
     - entity: climate.living_room
       name: Living room ${TEMP}°
 ```
+
+### Translated states and attributes
+
+`states[...].state` is the raw value, such as `above_horizon` or `awaiting_start`. To show the same text the built-in cards show, pass the state object to Home Assistant's own formatters on `hass`. They use the entity's translations (including ones a custom integration provides) and format numbers, dates and units for the user's language:
+
+```yaml
+type: custom:config-template-card
+entities:
+  - sun.sun
+card:
+  type: entities
+  entities:
+    - entity: sun.sun
+      name: "${hass.formatEntityState(states['sun.sun'])}"
+    - type: attribute
+      entity: sun.sun
+      attribute: next_rising
+      name: "${hass.formatEntityAttributeName(states['sun.sun'], 'next_rising')}"
+    - type: section
+      label: "Elevation: ${hass.formatEntityAttributeValue(states['sun.sun'], 'elevation')}"
+```
+
+| Function | Returns |
+| -------- | ------- |
+| `hass.formatEntityState(stateObj, state?)` | The translated state, e.g. `Above horizon`. Pass `state` to format a different value for the same entity |
+| `hass.formatEntityAttributeValue(stateObj, attribute, value?)` | The translated, formatted value of an attribute |
+| `hass.formatEntityAttributeName(stateObj, attribute)` | The translated name of an attribute, e.g. `Next rising` |
 
 ### Batteries that need charging
 
