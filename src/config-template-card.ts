@@ -18,6 +18,7 @@ import type {
   StaticVars,
   TemplateVars,
   WindowWithCardHelpers,
+  Connection,
 } from './types';
 import { CARD_VERSION } from './const';
 import { singleTemplateCode, splitTemplate } from './template';
@@ -91,6 +92,7 @@ export class ConfigTemplateCard extends LitElement {
   /** An inner card built by `getCardSize` before the first render, which that render reuses (#45). */
   private _measured?: { hass: HomeAssistant; config: ConfigTemplateConfig; element: Promise<CreatedElement> };
   private _updateTimer?: number;
+  private _specialEntities = new Map<string, () => void>();
 
   private _handleResize = () => {
     if (this._updateTimer) {
@@ -98,6 +100,7 @@ export class ConfigTemplateCard extends LitElement {
     }
     this._updateTimer = window.setTimeout(() => {
       requestAnimationFrame(() => {
+        this._contextCache = undefined;
         this.requestUpdate('_resize', true);
       });
     }, 500);
@@ -133,69 +136,6 @@ export class ConfigTemplateCard extends LitElement {
     if (config.entities !== undefined && !Array.isArray(config.entities) && typeof config.entities !== 'string') {
       throw new Error('entities must be a list of entity ids or a template that returns one');
     }
-
-    const start = Date.now();
-    const hassPresent = (resolve: (value: void | PromiseLike<void>) => void) => {
-      if (this.hass !== undefined) resolve();
-      else if (Date.now() - start > 5000) resolve();
-      else
-        setTimeout(() => {
-          hassPresent(resolve);
-        }, 100);
-    };
-
-    new Promise<void>(hassPresent)
-      .then(() => {
-        if (!this.hass) return;
-
-        let entities: string[];
-        try {
-          entities = this._resolveEntities(this.hass);
-        } catch {
-          entities = [];
-        }
-
-        for (const entity of entities) {
-          if (entity === '_resize') window.addEventListener('resize', this._handleResize);
-          else if (entity.startsWith('_energy')) {
-            const energyPresent = (resolve: (value: void | PromiseLike<void>) => void) => {
-              if ((this.hass?.connection as unknown as Record<string, unknown>)[entity] !== undefined) resolve();
-              else if (Date.now() - start > 5000) resolve();
-              else
-                setTimeout(() => {
-                  energyPresent(resolve);
-                }, 100);
-            };
-            new Promise<void>(energyPresent)
-              .then(() => {
-                if (
-                  (this.hass?.connection as unknown as Record<string, Record<string, unknown>>)[entity]?.subscribe ===
-                  undefined
-                )
-                  return;
-                // eslint-disable-next-line
-                (this.hass?.connection as unknown as Record<string, Record<string, any>>)[entity].subscribe(
-                  (data: Record<string, unknown>) => {
-                    if ((this.hass?.connection as unknown as Record<string, unknown>)[entity]) {
-                      for (const key of ['start', 'end', 'compare'])
-                        if (data[key] !== undefined)
-                          (this.hass?.connection as unknown as Record<string, Record<string, unknown>>)[entity][key] =
-                            data[key];
-                      this._contextCache = undefined;
-                    }
-                    this.requestUpdate(entity, true);
-                  },
-                );
-              })
-              .catch((err: unknown) => {
-                console.error('Error in Promise: ', err);
-              });
-          }
-        }
-      })
-      .catch((err: unknown) => {
-        console.error('Error in Promise: ', err);
-      });
 
     this._config = config;
     this._contextCache = undefined;
@@ -294,25 +234,30 @@ export class ConfigTemplateCard extends LitElement {
     }
 
     const oldHass = changedProps.get('hass') as HomeAssistant | undefined;
-    if (!this._config || !this.hass || !oldHass) {
+    if (!this._config || !this.hass) {
       return true;
     }
 
     let oldEntities: string[];
     let currentEntities: string[];
     try {
-      oldEntities = this._resolveEntities(oldHass);
+      oldEntities = oldHass ? this._resolveEntities(oldHass) : [];
       currentEntities = this._resolveEntities(this.hass);
     } catch {
       // Template errors are already logged and replaced; anything else unexpected re-renders.
       return true;
     }
 
-    if (oldEntities.length !== currentEntities.length) {
+    if (currentEntities.some((entityId) => entityId.startsWith('_') && changedProps.has(entityId))) {
       return true;
     }
 
-    if (currentEntities.some((entityId) => entityId.startsWith('_') && changedProps.has(entityId))) {
+    // Updates requested by requestUpdate usually don't have hass and should not always trigger updates.
+    if (!oldHass) {
+      return false;
+    }
+
+    if (oldEntities.length !== currentEntities.length) {
       return true;
     }
 
@@ -452,6 +397,69 @@ export class ConfigTemplateCard extends LitElement {
     }
 
     return element;
+  }
+
+  protected updated(): void {
+    if (!this.hass?.connection) return;
+
+    let entities: string[];
+    try {
+      entities = this._resolveEntities(this.hass);
+    } catch {
+      entities = [];
+    }
+
+    this._specialEntities.forEach((value: () => void, key: string) => {
+      if (!entities.includes(key)) {
+        value();
+      }
+    });
+
+    for (const entity of entities) {
+      if (!this._specialEntities.has(entity)) {
+        if (entity === '_resize') {
+          window.addEventListener('resize', this._handleResize);
+          this._specialEntities.set(entity, () => {
+            window.removeEventListener('resize', this._handleResize);
+          });
+        } else if (entity.startsWith('_energy')) {
+          const start = Date.now();
+          const energyPresent = (resolve: (value: void | PromiseLike<void>) => void) => {
+            if ((this.hass?.connection as unknown as Connection)?.[entity] !== undefined) resolve();
+            else if (Date.now() - start > 5000) resolve();
+            else
+              setTimeout(() => {
+                energyPresent(resolve);
+              }, 100);
+          };
+          new Promise<void>(energyPresent)
+            .then(() => {
+              if ((this.hass?.connection as unknown as Connection)?.[entity]?.subscribe === undefined) return;
+              this._specialEntities.set(
+                entity,
+                (this.hass?.connection as unknown as Connection)[entity].subscribe((data: Record<string, unknown>) => {
+                  if ((this.hass?.connection as unknown as Connection)[entity])
+                    for (const key of ['start', 'end', 'compare'])
+                      if (data[key] !== undefined)
+                        (this.hass?.connection as unknown as Connection)[entity][key] = data[key];
+                  this._contextCache = undefined;
+                  this.requestUpdate(entity, true);
+                }),
+              );
+            })
+            .catch((err: unknown) => {
+              console.error('Error in Promise: ', err);
+            });
+        }
+      }
+    }
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._specialEntities.forEach((value: () => void) => {
+      value();
+    });
   }
 
   private _initialize(): void {
