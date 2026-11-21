@@ -182,7 +182,7 @@ card:
 
 ### Special entities
 
-An entity id staring with an underscore `_` allows to trigger card updates on special events that are not connected to state changes.
+An entity id starting with an underscore `_` allows to trigger card updates on special events that are not connected to state changes.
 
 Currently the following options are supported:
 - `_resize` triggers card updates when the window resize event is fired.
@@ -190,14 +190,14 @@ Currently the following options are supported:
 
 ```yaml
 - type: energy-date-selection
-  collection_key: energy_colletion_key
+  collection_key: energy_collection_key
 - type: custom:config-template-card
   variables:
-    HEIGHT: '{{ window.innerHeight }}'
-    STARTDATE: '{{ hass.connection?._energy_colletion_key?.start }}'
-entities:
-  - _resize
-  - _energy_colletion_key
+    HEIGHT: window.innerHeight
+    STARTDATE: hass.connection?._energy_collection_key?.start
+  entities:
+    - _resize
+    - _energy_collection_key
 card:
   ...
 ```

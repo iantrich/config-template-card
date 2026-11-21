@@ -95,9 +95,7 @@ export class ConfigTemplateCard extends LitElement {
   private _specialEntities = new Map<string, () => void>();
 
   private _handleResize = () => {
-    if (this._updateTimer) {
-      window.clearTimeout(this._updateTimer);
-    }
+    if (this._updateTimer) window.clearTimeout(this._updateTimer);
     this._updateTimer = window.setTimeout(() => {
       requestAnimationFrame(() => {
         this._contextCache = undefined;
@@ -254,7 +252,7 @@ export class ConfigTemplateCard extends LitElement {
 
     // Updates requested by requestUpdate usually don't have hass and should not always trigger updates.
     if (!oldHass) {
-      return false;
+      return changedProps.has('hass');
     }
 
     if (oldEntities.length !== currentEntities.length) {
@@ -409,57 +407,55 @@ export class ConfigTemplateCard extends LitElement {
       entities = [];
     }
 
-    this._specialEntities.forEach((value: () => void, key: string) => {
-      if (!entities.includes(key)) {
-        value();
+    this._specialEntities.forEach((unsubscribe: () => void, entity: string) => {
+      if (!entities.includes(entity)) {
+        unsubscribe();
+        this._specialEntities.delete(entity);
       }
     });
 
     for (const entity of entities) {
-      if (!this._specialEntities.has(entity)) {
-        if (entity === '_resize') {
-          window.addEventListener('resize', this._handleResize);
-          this._specialEntities.set(entity, () => {
-            window.removeEventListener('resize', this._handleResize);
+      if (this._specialEntities.has(entity)) continue;
+      if (entity === '_resize') {
+        window.addEventListener('resize', this._handleResize);
+        this._specialEntities.set(entity, () => {
+          window.removeEventListener('resize', this._handleResize);
+        });
+      } else if (entity.startsWith('_energy')) {
+        const start = Date.now();
+        const energyPresent = (resolve: (value: void | PromiseLike<void>) => void) => {
+          if ((this.hass?.connection as unknown as Connection | undefined)?.[entity] !== undefined) resolve();
+          else if (Date.now() - start > 5000) resolve();
+          else
+            setTimeout(() => {
+              energyPresent(resolve);
+            }, 100);
+        };
+        new Promise<void>(energyPresent)
+          .then(() => {
+            const collection = (this.hass?.connection as Connection | undefined)?.[entity];
+            if (collection?.subscribe === undefined || this._specialEntities.has(entity)) return;
+            this._specialEntities.set(
+              entity,
+              collection.subscribe((data: Record<string, unknown>) => {
+                for (const key of ['start', 'end', 'compare']) if (data[key] !== undefined) collection[key] = data[key];
+                this._contextCache = undefined;
+                this.requestUpdate(entity, true);
+              }),
+            );
+          })
+          .catch((err: unknown) => {
+            console.error('Error in Promise: ', err);
           });
-        } else if (entity.startsWith('_energy')) {
-          const start = Date.now();
-          const energyPresent = (resolve: (value: void | PromiseLike<void>) => void) => {
-            if ((this.hass?.connection as unknown as Connection)?.[entity] !== undefined) resolve();
-            else if (Date.now() - start > 5000) resolve();
-            else
-              setTimeout(() => {
-                energyPresent(resolve);
-              }, 100);
-          };
-          new Promise<void>(energyPresent)
-            .then(() => {
-              if ((this.hass?.connection as unknown as Connection)?.[entity]?.subscribe === undefined) return;
-              this._specialEntities.set(
-                entity,
-                (this.hass?.connection as unknown as Connection)[entity].subscribe((data: Record<string, unknown>) => {
-                  if ((this.hass?.connection as unknown as Connection)[entity])
-                    for (const key of ['start', 'end', 'compare'])
-                      if (data[key] !== undefined)
-                        (this.hass?.connection as unknown as Connection)[entity][key] = data[key];
-                  this._contextCache = undefined;
-                  this.requestUpdate(entity, true);
-                }),
-              );
-            })
-            .catch((err: unknown) => {
-              console.error('Error in Promise: ', err);
-            });
-        }
       }
     }
   }
 
   public disconnectedCallback(): void {
     super.disconnectedCallback();
-    this._specialEntities.forEach((value: () => void) => {
-      value();
-    });
+    this._specialEntities.forEach((unsubscribe) => unsubscribe());
+    this._specialEntities.clear();
+    if (this._updateTimer) window.clearTimeout(this._updateTimer);
   }
 
   private _initialize(): void {
