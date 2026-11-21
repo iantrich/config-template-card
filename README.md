@@ -30,7 +30,7 @@ Use [HACS](https://hacs.xyz) or follow this [guide](https://github.com/thomaslov
 | Name      | Type   | Requirement  | Description                                                                                                      |
 | --------- | ------ | ------------ | ---------------------------------------------------------------------------------------------------------------- |
 | type      | string | **Required** | `custom:config-template-card`                                                                                    |
-| entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here, either per item or as one template that returns a list. `*` matches any characters (see [Wildcards in entities](#wildcards-in-entities)) |
+| entities  | list   | **Required** | List of entity strings that should be watched for updates. Templates can be used here, either per item or as one template that returns a list. `*` matches any characters (see [Wildcards in entities](#wildcards-in-entities)). Entities starting with `_` are used for special purposes (see [Special entities](#special-entities)) |
 | variables | list or object | **Optional** | Variables, which can be templates, that can be used in your templates and indexed using `vars` or by name |
 | staticVariables | list or object | **Optional** | Like `variables`, but evaluated once when the card loads (see [Static variables](#static-variables)) |
 | card      | object | **Optional**\* | Card configuration |
@@ -179,6 +179,28 @@ card:
 - Patterns work in templates (`sensor.${ROOM}_*`) and in dashboard or view `config_template_card_entities`.
 - Every other character is matched literally. For anything a `*` can't express, use a template, for example `${Object.keys(states).filter((id) => /^sensor\..*_(power|energy)$/.test(id))}`.
 - `*` on its own watches every entity, which re-renders the card on every state change in Home Assistant; the card logs a warning if you use it.
+
+### Special entities
+
+An entity id starting with an underscore `_` allows to trigger card updates on special events that are not connected to state changes.
+
+Currently the following options are supported:
+- `_resize` triggers card updates when the window resize event is fired.
+- `_<energy_date_selection_collection_key>` triggers card updates when the `energy-date-selection` with the corresponding `collection_key` updates. Note that all collection keys need to begin with `energy`. See [Energy cards documentation](https://www.home-assistant.io/dashboards/energy/#energy-date-picker) for further information.
+
+```yaml
+- type: energy-date-selection
+  collection_key: energy_collection_key
+- type: custom:config-template-card
+  variables:
+    HEIGHT: window.innerHeight
+    STARTDATE: hass.connection?._energy_collection_key?.start
+  entities:
+    - _resize
+    - _energy_collection_key
+card:
+  ...
+```
 
 ### Picture-elements card example
 

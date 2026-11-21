@@ -81,3 +81,10 @@ export interface LovelacePanelWithVars extends Element {
 export interface WindowWithCardHelpers extends Window {
   loadCardHelpers?: () => Promise<CardHelpers>;
 }
+
+export interface Connection {
+  [key: string]: {
+    subscribe(cb: (data: Record<string, unknown>) => void): () => void;
+    [key: string]: unknown;
+  };
+}
